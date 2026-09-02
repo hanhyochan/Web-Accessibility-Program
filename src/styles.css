@@ -1,0 +1,291 @@
+:root {
+  --bg: #f5f5f5;
+  --surface: #ffffff;
+  --text: #1f1f1f;
+  --muted: #737373;
+  --ink: #2e2e2e;
+  --ink-text: #ffffff;
+  --field: #ededed;
+  --field-line: #c4c4c4;
+  --radius: 8px;
+  font-family: 'Segoe UI', 'Malgun Gothic', sans-serif;
+  color: var(--text);
+  background: var(--bg);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  min-height: 100%;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 48px;
+}
+
+.topbar h1 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.muted {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.content {
+  flex: 1;
+  padding: 24px 48px 48px;
+}
+
+.content.narrow {
+  max-width: 720px;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.stack.lg {
+  gap: 24px;
+}
+
+.row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.row.between {
+  justify-content: space-between;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 24px 28px;
+}
+
+.card h2,
+.card h3 {
+  margin: 0 0 8px;
+}
+
+.btn {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  border-radius: var(--radius);
+  padding: 10px 4px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.btn:hover {
+  color: var(--text);
+}
+
+.btn.primary {
+  background: var(--ink);
+  color: var(--ink-text);
+  padding: 14px 28px;
+  font-size: 14px;
+}
+
+.btn.primary:hover {
+  background: #1a1a1a;
+  color: var(--ink-text);
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.field label {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.field input,
+.field select,
+.field textarea {
+  border: 1px solid var(--field-line);
+  background: var(--field);
+  border-radius: 6px;
+  padding: 12px 14px;
+  outline: none;
+}
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+  border-color: var(--ink);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.list-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--surface);
+  border-radius: 6px;
+  padding: 14px 16px;
+}
+
+.list-row.clickable {
+  cursor: pointer;
+}
+
+.list-row.clickable:hover {
+  background: #fafafa;
+}
+
+.list-row .grow {
+  flex: 1;
+  min-width: 0;
+}
+
+.note {
+  background: var(--surface);
+  border-radius: 6px;
+  padding: 12px 16px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.progress-track {
+  width: 100%;
+  max-width: 560px;
+  height: 10px;
+  background: #dbdbdb;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--ink);
+}
+
+.steps {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 48px 4px;
+}
+
+.step-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.step-item.on {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.step-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #c7c7c7;
+}
+
+.step-item.on .step-dot,
+.step-item.done .step-dot {
+  background: var(--ink);
+}
+
+.step-sep {
+  color: #d0d0d0;
+  font-size: 12px;
+}
+
+.title-xl {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.diff-box {
+  font-family: Consolas, 'Courier New', monospace;
+  font-size: 12px;
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 16px;
+  white-space: pre-wrap;
+}
+
+.center-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 16px;
+  padding-top: 48px;
+}
+
+.footer-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-top: 8px;
+}
