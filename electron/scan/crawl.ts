@@ -1,4 +1,4 @@
-import { chromium } from 'playwright';
+import { launchBrowser } from './browser';
 
 export type CrawlPage = {
   url: string;
@@ -6,6 +6,12 @@ export type CrawlPage = {
   status: 'ok' | 'skip' | 'fail';
   discoveredFrom: string;
   included: boolean;
+};
+
+export type CrawlProgress = {
+  found: number;
+  maxPages: number;
+  currentUrl: string;
 };
 
 function normalizeUrl(raw: string, base: string): string | null {
@@ -35,6 +41,7 @@ export async function crawlSite(options: {
   maxDepth: number;
   maxPages: number;
   excludePatterns?: string;
+  onProgress?: (progress: CrawlProgress) => void;
 }): Promise<{ pages: CrawlPage[]; note: string }> {
   const start = normalizeUrl(options.startUrl, options.startUrl);
   if (!start) throw new Error('시작 URL이 올바르지 않습니다.');
@@ -45,7 +52,7 @@ export async function crawlSite(options: {
     .map((s) => s.trim())
     .filter(Boolean);
 
-  const browser = await chromium.launch({ headless: true });
+  const browser = await launchBrowser();
   const context = await browser.newContext();
   const page = await context.newPage();
 
@@ -55,11 +62,20 @@ export async function crawlSite(options: {
     { url: start, depth: 0, from: '(시작)' },
   ];
 
+  const report = (currentUrl: string) => {
+    options.onProgress?.({
+      found: results.length,
+      maxPages: options.maxPages,
+      currentUrl,
+    });
+  };
+
   try {
     while (queue.length > 0 && results.length < options.maxPages) {
       const cur = queue.shift()!;
       if (visited.has(cur.url)) continue;
       visited.add(cur.url);
+      report(cur.url);
 
       if (shouldSkip(cur.url, exclude)) {
         results.push({
@@ -69,6 +85,7 @@ export async function crawlSite(options: {
           discoveredFrom: cur.from,
           included: false,
         });
+        report(cur.url);
         continue;
       }
 
@@ -85,6 +102,7 @@ export async function crawlSite(options: {
           discoveredFrom: cur.from,
           included: ok,
         });
+        report(cur.url);
 
         if (!ok || cur.depth >= options.maxDepth) continue;
 
@@ -113,6 +131,7 @@ export async function crawlSite(options: {
           discoveredFrom: cur.from,
           included: false,
         });
+        report(cur.url);
       }
     }
   } finally {

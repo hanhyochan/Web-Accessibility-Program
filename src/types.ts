@@ -1,6 +1,6 @@
 export type AppMode = 'production' | 'local';
 
-export type RuleEngine = 'axe' | 'axe-custom' | 'html-validate' | 'playwright-template';
+export type RuleEngine = 'axe' | 'axe-custom' | 'html-validate' | 'playwright-template' | 'manual';
 
 export type RuleDef = {
   id: string;
@@ -68,6 +68,9 @@ declare global {
         maxPages: number;
         excludePatterns?: string;
       }) => Promise<{ pages: InventoryPage[]; note: string; error?: boolean }>;
+      onCrawlProgress?: (
+        cb: (progress: { found: number; maxPages: number; currentUrl: string }) => void,
+      ) => () => void;
       runRule: (payload: {
         ruleId: string;
         pages: string[];

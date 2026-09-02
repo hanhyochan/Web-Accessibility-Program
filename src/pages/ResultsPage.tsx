@@ -31,7 +31,11 @@ export default function ResultsPage() {
 
   return (
     <div className="app-shell">
-      <StepHeader active={6} />
+      <StepHeader
+        active={5}
+        onPrev={() => navigate('/rules')}
+        nextDisabled
+      />
       <main className="content stack lg">
         <div>
           <h2 className="title-xl">검사 결과</h2>
@@ -83,9 +87,6 @@ export default function ResultsPage() {
           )}
           <button className="btn" type="button" onClick={() => navigate('/export')}>
             보고서 받기
-          </button>
-          <button className="btn" type="button" onClick={() => navigate('/')}>
-            처음부터 다시
           </button>
         </div>
       </main>

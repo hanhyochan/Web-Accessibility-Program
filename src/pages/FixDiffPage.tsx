@@ -1,20 +1,18 @@
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import StepHeader from '../components/StepHeader';
 import { useAppStore } from '../store';
 
 export default function FixDiffPage() {
+  const navigate = useNavigate();
   const project = useAppStore((s) => s.project)!;
   const findings = useAppStore((s) => s.job.findings.filter((f) => f.autoFixable));
 
   if (project.mode !== 'local') {
     return (
       <div className="app-shell">
-        <StepHeader active={6} />
+        <StepHeader active={5} onPrev={() => navigate('/results')} nextDisabled />
         <main className="content">
           <p className="muted">운영 사이트 모드에서는 코드를 고칠 수 없습니다.</p>
-          <Link className="btn" to="/results">
-            ← 결과로
-          </Link>
         </main>
       </div>
     );
@@ -22,7 +20,7 @@ export default function FixDiffPage() {
 
   return (
     <div className="app-shell">
-      <StepHeader active={6} />
+      <StepHeader active={5} onPrev={() => navigate('/results')} nextDisabled />
       <main className="content stack lg">
         <div>
           <h2 className="title-xl">이렇게 고칠까요?</h2>
@@ -48,18 +46,13 @@ export default function FixDiffPage() {
           {`- <img class="hero" src="/img/phone.png">
 + <img class="hero" src="/img/phone.png" alt="">`}
         </div>
-        <div className="footer-nav">
-          <Link className="btn" to="/results">
-            ← 취소
-          </Link>
-          <button
-            className="btn primary"
-            type="button"
-            onClick={() => alert('다음 단계에서 실제 파일 수정을 연결합니다.')}
-          >
-            백업 후 적용
-          </button>
-        </div>
+        <button
+          className="btn primary"
+          type="button"
+          onClick={() => alert('다음 단계에서 실제 파일 수정을 연결합니다.')}
+        >
+          백업 후 적용
+        </button>
       </main>
     </div>
   );

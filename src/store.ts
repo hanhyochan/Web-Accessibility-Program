@@ -17,7 +17,8 @@ type AppState = {
   setRules: (rules: RuleDef[]) => void;
   toggleRule: (id: string) => void;
   setInventory: (pages: InventoryPage[]) => void;
-  togglePageIncluded: (url: string) => void;
+  togglePageIncluded: (index: number) => void;
+  setAllPagesIncluded: (included: boolean) => void;
   setJob: (job: Partial<ScanJob>) => void;
   appendFindings: (findings: Finding[]) => void;
   setSelectedFindingId: (id: string | null) => void;
@@ -68,13 +69,27 @@ export const useAppStore = create<AppState>((set) => ({
       rules: s.rules.map((r) => (r.id === id ? { ...r, enabled: !r.enabled } : r)),
     })),
 
-  setInventory: (pages) => set({ inventory: pages }),
+  setInventory: (pages) => {
+    const seen = new Set<string>();
+    const unique: InventoryPage[] = [];
+    for (const page of pages) {
+      if (seen.has(page.url)) continue;
+      seen.add(page.url);
+      unique.push(page);
+    }
+    set({ inventory: unique });
+  },
 
-  togglePageIncluded: (url) =>
+  togglePageIncluded: (index) =>
     set((s) => ({
-      inventory: s.inventory.map((p) =>
-        p.url === url ? { ...p, included: !p.included } : p,
+      inventory: s.inventory.map((p, i) =>
+        i === index ? { ...p, included: !p.included } : p,
       ),
+    })),
+
+  setAllPagesIncluded: (included) =>
+    set((s) => ({
+      inventory: s.inventory.map((p) => ({ ...p, included })),
     })),
 
   setJob: (job) => set((s) => ({ job: { ...s.job, ...job } })),

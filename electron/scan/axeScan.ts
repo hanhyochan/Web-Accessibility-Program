@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright';
-import { chromium } from 'playwright';
+import { launchBrowser } from './browser';
 
 export type Finding = {
   id: string;
@@ -57,15 +57,23 @@ export async function runRuleOnPages(options: {
   const { ruleId, pages } = options;
   const findings: Finding[] = [];
 
-  // html-validate는 별도 엔진 — 이번 단계에서 안내만
-  if (ruleId === 'html-validate-recommended') {
+  // html-validate / 마크업·HTML 표준 — 다음 단계에서 실연결
+  if (ruleId === 'html-validate-recommended' || ruleId === 'compat-html') {
     return {
       findings: [],
       note: 'HTML 문법 검사(html-validate)는 다음 단계에서 연결합니다',
     };
   }
 
-  const browser = await chromium.launch({ headless: true });
+  // 평가원·호환성 중 자동 엔진 미연결(수동) 항목
+  if (ruleId.startsWith('wa-') || ruleId.startsWith('compat-')) {
+    return {
+      findings: [],
+      note: `수동 확인 항목입니다 · ${ruleId} (자동 검사 미구현)`,
+    };
+  }
+
+  const browser = await launchBrowser();
   try {
     const page = await browser.newPage();
     for (const url of pages) {

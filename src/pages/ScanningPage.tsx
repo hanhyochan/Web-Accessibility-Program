@@ -87,19 +87,12 @@ export default function ScanningPage() {
   return (
     <div className="app-shell">
       <StepHeader
-        active={5}
-        rightSlot={
-          <button
-            className="btn"
-            type="button"
-            onClick={() => {
-              setJob({ status: 'cancelled', note: '중단됨' });
-              navigate('/rules');
-            }}
-          >
-            중단하기
-          </button>
-        }
+        active={4}
+        onPrev={() => {
+          setJob({ status: 'cancelled', note: '중단됨' });
+          navigate('/rules');
+        }}
+        nextDisabled
       />
       <main className="content center-col">
         <h2 className="title-xl">검사하고 있어요</h2>
@@ -107,10 +100,7 @@ export default function ScanningPage() {
         <div className="progress-track">
           <div className="progress-fill" style={{ width: `${pct}%` }} />
         </div>
-        <p className="muted">
-          지금: {job.currentRuleId || '준비 중'} · {job.progressPage} / {job.progressPageTotal}{' '}
-          페이지
-        </p>
+        <p className="muted">{pct}%</p>
       </main>
     </div>
   );

@@ -29,6 +29,16 @@ const api = {
     excludePatterns?: string;
   }): Promise<{ pages: CrawlPage[]; note: string; error?: boolean }> =>
     ipcRenderer.invoke('scan:crawl', payload),
+  onCrawlProgress: (
+    cb: (progress: { found: number; maxPages: number; currentUrl: string }) => void,
+  ): (() => void) => {
+    const listener = (
+      _event: unknown,
+      progress: { found: number; maxPages: number; currentUrl: string },
+    ) => cb(progress);
+    ipcRenderer.on('scan:crawl-progress', listener);
+    return () => ipcRenderer.removeListener('scan:crawl-progress', listener);
+  },
   runRule: (payload: {
     ruleId: string;
     pages: string[];

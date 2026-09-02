@@ -46,7 +46,7 @@ app.whenReady().then(() => {
   ipcMain.handle(
     'scan:crawl',
     async (
-      _event,
+      event,
       payload: {
         startUrl: string;
         maxDepth: number;
@@ -55,7 +55,12 @@ app.whenReady().then(() => {
       },
     ) => {
       try {
-        return await crawlSite(payload);
+        return await crawlSite({
+          ...payload,
+          onProgress: (progress) => {
+            event.sender.send('scan:crawl-progress', progress);
+          },
+        });
       } catch (err) {
         return {
           pages: [],

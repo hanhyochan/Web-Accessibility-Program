@@ -14,7 +14,7 @@ export default function ModeSelectPage() {
 
   return (
     <div className="app-shell">
-      <StepHeader active={1} />
+      <StepHeader active={null} />
       <main className="content center-col">
         <h2 className="title-xl">어떤 사이트를 검사할까요?</h2>
         <p className="muted" style={{ maxWidth: 520 }}>

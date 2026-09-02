@@ -43,14 +43,14 @@ export default function NewProjectPage() {
       maxDepth: 3,
       maxPages: 100,
       excludePatterns: '/login, /logout',
-      rulePackId: 'kwcag-auto',
+      rulePackId: 'wa-a11y',
     });
     navigate('/inventory');
   };
 
   return (
     <div className="app-shell">
-      <StepHeader active={2} />
+      <StepHeader active={1} onPrev={() => navigate('/')} nextDisabled />
       <main className="content narrow">
         <form className="stack lg" onSubmit={onSubmit}>
           <div>
@@ -87,12 +87,9 @@ export default function NewProjectPage() {
               </div>
             </div>
           )}
-          <div className="footer-nav">
-            <button className="btn" type="button" onClick={() => navigate('/')}>
-              ← 이전
-            </button>
+          <div>
             <button className="btn primary" type="submit">
-              다음: 검사할 페이지 확인
+              페이지 찾기
             </button>
           </div>
         </form>

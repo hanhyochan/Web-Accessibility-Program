@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import StepHeader from '../components/StepHeader';
 import { useAppStore } from '../store';
 
 export default function ExportPage() {
+  const navigate = useNavigate();
   const project = useAppStore((s) => s.project)!;
   const job = useAppStore((s) => s.job);
   const [formats, setFormats] = useState({ pdf: false, csv: false, json: true });
@@ -33,7 +34,7 @@ export default function ExportPage() {
 
   return (
     <div className="app-shell">
-      <StepHeader active={6} />
+      <StepHeader active={5} onPrev={() => navigate('/results')} nextDisabled />
       <main className="content stack lg" style={{ maxWidth: 800 }}>
         <div>
           <h2 className="title-xl">보고서를 받아요</h2>
@@ -65,14 +66,9 @@ export default function ExportPage() {
             </span>
           </label>
         </div>
-        <div className="footer-nav">
-          <Link className="btn" to="/results">
-            ← 결과로
-          </Link>
-          <button className="btn primary" type="button" onClick={exportNow}>
-            받기
-          </button>
-        </div>
+        <button className="btn primary" type="button" onClick={exportNow}>
+          받기
+        </button>
       </main>
     </div>
   );

@@ -2,47 +2,187 @@ import { useNavigate } from 'react-router-dom';
 import StepHeader from '../components/StepHeader';
 import { useAppStore } from '../store';
 
-/** 사용자용 쉬운 설명 — 기술 ID는 보조로만 */
+/** 표시용 — 없으면 catalog label 사용 */
 const COPY: Record<string, { title: string; desc: string }> = {
   'image-alt': {
-    title: '이미지에 대체 텍스트가 있나요',
-    desc: '그림·사진을 눈으로 못 보는 분도 내용을 알 수 있게',
+    title: 'WA 1. 적절한 대체 텍스트 제공',
+    desc: '텍스트 아닌 콘텐츠는 의미·용도를 알 수 있게 대체 텍스트 제공 · 자동(axe)',
   },
-  'link-name': {
-    title: '링크 이름만 들어도 어디인지 알 수 있나요',
-    desc: '"여기 클릭"처럼 모호한 링크 찾기',
+  'video-caption': {
+    title: 'WA 2. 자막 제공',
+    desc: '멀티미디어에 자막·대본·수어 제공 · 자동(axe)',
   },
-  'ko-blank-link-title': {
-    title: '새 창으로 열리는 링크에 안내가 있나요',
-    desc: '새 창이 뜬다는 안내가 있는지',
+  'th-has-data-cells': {
+    title: 'WA 3. 표의 구성',
+    desc: '표는 이해하기 쉽게 구성 · 자동(axe)',
   },
-  label: {
-    title: '입력칸에 이름이 붙어 있나요',
-    desc: '폼 입력란과 설명 연결',
+  'wa-04-linear': {
+    title: 'WA 4. 콘텐츠의 선형화',
+    desc: '콘텐츠는 논리적인 순서로 제공 · 수동',
   },
-  'button-name': {
-    title: '버튼에 이름이 있나요',
-    desc: '빈 버튼·아이콘만 있는 버튼 찾기',
+  'wa-05-instructions': {
+    title: 'WA 5. 명확한 지시 사항 제공',
+    desc: '지시사항은 모양·크기·위치·방향·색만으로 전달하지 않음 · 수동',
   },
-  'html-has-lang': {
-    title: '페이지 언어가 표시되어 있나요',
-    desc: 'html lang 속성',
+  'wa-06-color-alone': {
+    title: 'WA 6. 색에 무관한 콘텐츠 인식',
+    desc: '색에 관계없이 인식 가능 · 수동',
   },
-  'document-title': {
-    title: '브라우저 탭 제목이 있나요',
-    desc: '문서 title',
+  'no-autoplay-audio': {
+    title: 'WA 7. 자동 재생 금지',
+    desc: '자동으로 소리가 재생되지 않아야 함 · 자동(axe)',
   },
   'color-contrast': {
-    title: '글자와 배경 색 대비가 충분한가요',
-    desc: '선택 항목',
+    title: 'WA 8. 텍스트 콘텐츠의 명도 대비',
+    desc: '텍스트와 배경 명도 대비 · 자동(axe)',
   },
-  'heading-order': {
-    title: '제목 순서가 자연스러운가요',
-    desc: '선택 항목',
+  'wa-09-adjacent': {
+    title: 'WA 9. 콘텐츠 간의 구분',
+    desc: '이웃한 콘텐츠는 구별될 수 있어야 함 · 수동',
+  },
+  'wa-10-keyboard': {
+    title: 'WA 10. 키보드 사용 보장',
+    desc: '모든 기능은 키보드만으로도 사용 가능 · 수동(전문가)',
+  },
+  'wa-11-focus': {
+    title: 'WA 11. 초점 이동과 표시',
+    desc: '초점은 논리적으로 이동·표시 · 수동(전문가)',
+  },
+  'wa-12-target-size': {
+    title: 'WA 12. 조작 가능',
+    desc: '사용자 입력·컨트롤은 조작 가능하도록 제공 · 수동',
+  },
+  'wa-13-char-key': {
+    title: 'WA 13. 문자단축키',
+    desc: '문자 단축키 오동작 방지 · 수동',
+  },
+  'meta-refresh': {
+    title: 'WA 14. 응답시간 조절',
+    desc: '시간제한 콘텐츠 응답시간 조절 · 자동(axe meta-refresh)',
+  },
+  'wa-15-pause': {
+    title: 'WA 15. 정지 기능 제공',
+    desc: '자동 변경 콘텐츠 움직임 제어 · 수동',
+  },
+  blink: {
+    title: 'WA 16. 깜빡임과 번쩍임 사용 제한',
+    desc: '초당 3~50회 깜빡임·번쩍임 제한 · 자동(axe)',
+  },
+  bypass: {
+    title: 'WA 17. 반복 영역 건너뛰기',
+    desc: '반복 영역 건너뛰기 수단 · 자동(axe)',
+  },
+  'document-title': {
+    title: 'WA 18. 제목 제공',
+    desc: '페이지·프레임·블록에 적절한 제목 · 자동(axe)',
+  },
+  'page-has-heading-one': {
+    title: 'WA 18. 제목 제공 (h1)',
+    desc: '페이지 h1 존재 · 자동(axe)',
+  },
+  'link-name': {
+    title: 'WA 19. 적절한 링크 텍스트',
+    desc: '링크 텍스트로 용도·목적 이해 · 자동(axe)',
+  },
+  'wa-20-fixed-ref': {
+    title: 'WA 20. 고정된 참조 위치 정보',
+    desc: '전자출판 형식 등 고정 참조 위치 · 수동',
+  },
+  'wa-21-pointer': {
+    title: 'WA 21. 단일 포인터 입력 지원',
+    desc: '다중·경로 기반 동작은 단일 포인터로도 조작 · 수동',
+  },
+  'wa-22-pointer-cancel': {
+    title: 'WA 22. 포인터 입력 취소',
+    desc: '단일 포인터 실행 기능 취소 가능 · 수동',
+  },
+  'label-content-name-mismatch': {
+    title: 'WA 23. 레이블과 네임',
+    desc: '보이는 레이블과 접근성 이름 일치 · 자동(axe)',
+  },
+  'wa-24-motion': {
+    title: 'WA 24. 동작기반 작동',
+    desc: '동작 기반 작동 대체 수단 · 수동',
+  },
+  'html-has-lang': {
+    title: 'WA 25. 기본 언어 표시',
+    desc: '주로 사용하는 언어 명시 · 자동(axe)',
+  },
+  'wa-26-user-control': {
+    title: 'WA 26. 사용자 요구에 따른 실행',
+    desc: '의도하지 않은 기능(새 창 등) 방지·제어 · 수동',
+  },
+  'wa-27-help': {
+    title: 'WA 27. 찾기 쉬운 도움 정보',
+    desc: '도움 정보가 있으면 찾기 쉽게 · 수동',
+  },
+  'wa-28-error': {
+    title: 'WA 28. 오류 정정',
+    desc: '입력 오류 정정 방법 제공 · 수동',
+  },
+  label: {
+    title: 'WA 29. 레이블 제공',
+    desc: '사용자 입력에 대응하는 레이블 · 자동(axe)',
+  },
+  'button-name': {
+    title: 'WA 29. 레이블 제공 (button)',
+    desc: '버튼 인식 가능 이름 · 자동(axe)',
+  },
+  'wa-30-auth': {
+    title: 'WA 30. 접근 가능한 인증',
+    desc: '접근 가능한 인증(검증) · 수동',
+  },
+  'wa-31-redundant-entry': {
+    title: 'WA 31. 반복 입력 정보',
+    desc: '반복 입력 정보 자동·선택 입력 · 수동',
   },
   'html-validate-recommended': {
-    title: 'HTML 문법이 올바른가요',
-    desc: '웹호환성(문법) 검사',
+    title: 'WA 32. 마크업 오류 방지',
+    desc: '마크업 열고 닫음·중첩·속성 · html-validate 예정',
+  },
+  'wa-33-webapp': {
+    title: 'WA 33. 웹 애플리케이션 접근성 준수',
+    desc: '포함 웹앱도 각 항목에서 점검 · 수동',
+  },
+  'compat-html': {
+    title: '호환 1.1 (X)HTML 표준 준수',
+    desc: '문법·HTML5 기술표준 · html-validate 예정',
+  },
+  'compat-css': {
+    title: '호환 1.2 CSS 표준 준수',
+    desc: '시각적 속성은 CSS 기술표준 · 수동',
+  },
+  'compat-utf8': {
+    title: '호환 1.3 문자(한글) 부호화 준수',
+    desc: 'UTF-8 · 수동',
+  },
+  'compat-js': {
+    title: '호환 1.4 제어 기능의 표준 준수',
+    desc: 'JavaScript 오류·DOM 경고 없이 동작 · 수동',
+  },
+  'compat-plugin': {
+    title: '호환 1.5 비표준 기술 제거',
+    desc: '플러그인 제거 가이드라인 · 수동',
+  },
+  'compat-func': {
+    title: '호환 2.1 기능 호환성 확보',
+    desc: '브라우저 간 동등 동작 · 수동',
+  },
+  'compat-display': {
+    title: '호환 2.2 화면표시 호환성 확보',
+    desc: '브라우저 간 동등 표현 · 수동',
+  },
+  'compat-m-func': {
+    title: '호환 3.1 모바일 기능 호환성 확보',
+    desc: '모바일 OS 동등 동작 · 수동',
+  },
+  'compat-m-display': {
+    title: '호환 3.2 모바일 화면표시 호환성 확보',
+    desc: '모바일용 화면 표시 · 수동',
+  },
+  'ko-blank-link-title': {
+    title: '새 창 링크 title 안내',
+    desc: 'target=_blank title에 새창 · 커스텀 자동',
   },
 };
 
@@ -56,16 +196,22 @@ export default function RulesPage() {
 
   return (
     <div className="app-shell">
-      <StepHeader active={4} />
+      <StepHeader
+        active={3}
+        onPrev={() => navigate('/inventory')}
+        onNext={() => navigate('/scanning')}
+        nextDisabled={enabled === 0 || pages === 0}
+      />
       <main className="content stack lg">
         <div>
           <h2 className="title-xl">무엇을 검사할까요?</h2>
           <p className="muted">
-            추천 항목은 이미 켜져 있습니다. 잘 모르겠으면 그대로 두고 검사를 시작하세요.
+            평가원·문화정보원(통합모니터링) 진단보고서 기준을 모두 넣었습니다. 자동/수동이
+            섞여 있습니다.
           </p>
         </div>
         <div className="note">
-          추천 세트: 기본 {enabled}개 선택됨 · 검사 페이지 {pages}개
+          선택 {enabled}개 · 검사 페이지 {pages}개 · 접근성 32(+33) + 웹호환성 9
         </div>
         <div className="list">
           {rules.map((r) => {
@@ -85,30 +231,6 @@ export default function RulesPage() {
               </label>
             );
           })}
-        </div>
-        <div className="footer-nav">
-          <div className="row">
-            <button className="btn" type="button" onClick={() => navigate('/inventory')}>
-              ← 이전
-            </button>
-            <button
-              className="btn"
-              type="button"
-              onClick={() =>
-                alert('추가 항목·커스텀은 다음 버전에서 이어갑니다. 지금은 목록에서 골라 주세요.')
-              }
-            >
-              항목 더 보기
-            </button>
-          </div>
-          <button
-            className="btn primary"
-            type="button"
-            disabled={enabled === 0 || pages === 0}
-            onClick={() => navigate('/scanning')}
-          >
-            검사 시작
-          </button>
         </div>
       </main>
     </div>
