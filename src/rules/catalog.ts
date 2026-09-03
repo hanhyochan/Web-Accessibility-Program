@@ -375,9 +375,3 @@ export const RULE_CATALOG: RuleDef[] = [
     description: 'target=_blank title에 새창 (WA 26 보조)',
   },
 ];
-
-export const RULE_PACKS = [
-  { id: 'wa-a11y', label: '웹접근성 (KWCAG/평가원)' },
-  { id: 'wa-compat', label: '웹호환성 (품질관리 지침)' },
-  { id: 'custom', label: '내 커스텀' },
-] as const;

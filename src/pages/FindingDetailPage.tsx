@@ -1,5 +1,8 @@
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import PageIntro from '../components/PageIntro';
+import StatDash from '../components/StatDash';
 import StepHeader from '../components/StepHeader';
+import { useOverflowAction } from '../hooks/useOverflowAction';
 import { useAppStore } from '../store';
 
 export default function FindingDetailPage() {
@@ -7,11 +10,13 @@ export default function FindingDetailPage() {
   const navigate = useNavigate();
   const project = useAppStore((s) => s.project)!;
   const finding = useAppStore((s) => s.job.findings.find((f) => f.id === id));
+  const showFix = project.mode === 'local' && !!finding?.autoFixable;
+  const { bottomRef, showTop } = useOverflowAction([finding?.id, showFix]);
 
   if (!finding) {
     return (
       <div className="app-shell">
-        <StepHeader active={5} onPrev={() => navigate('/results')} nextDisabled />
+        <StepHeader active={5} onPrev={() => navigate('/results')} />
         <main className="content">
           <p>항목을 찾을 수 없습니다.</p>
         </main>
@@ -19,33 +24,36 @@ export default function FindingDetailPage() {
     );
   }
 
+  const isCritical = finding.impact === 'critical';
+  const fixAction = (
+    <Link className="btn primary" to="/fix">
+      이 문제 고치기
+    </Link>
+  );
+
   return (
     <div className="app-shell">
-      <StepHeader active={5} onPrev={() => navigate('/results')} nextDisabled />
+      <StepHeader active={5} onPrev={() => navigate('/results')} />
       <main className="content stack lg">
-        <h2 className="title-xl">{finding.message}</h2>
-        <div className="cards">
-          <div className="card stack">
-            <div className="muted">어디</div>
-            <div>{finding.url}</div>
-            <div className="muted">{finding.selector}</div>
-          </div>
-          <div className="card stack">
-            <div className="muted">중요도</div>
-            <div>{finding.impact === 'critical' ? '꼭 확인' : '권장'}</div>
-          </div>
-        </div>
+        <PageIntro
+          title={finding.message}
+          topAction={showFix && showTop ? fixAction : undefined}
+        />
+        <StatDash
+          items={[
+            {
+              label: '중요도',
+              value: isCritical ? '필수확인 오류' : '권장',
+              tone: isCritical ? 'critical' : 'warn',
+            },
+          ]}
+        />
+        {finding.selector && <p className="muted">{finding.selector}</p>}
         <div className="card stack">
-          <strong>코드 일부</strong>
-          <pre className="diff-box" style={{ margin: 0 }}>
-            {finding.htmlSnippet}
-          </pre>
+          <strong className="list-primary">코드 일부</strong>
+          <pre className="diff-box">{finding.htmlSnippet}</pre>
         </div>
-        {project.mode === 'local' && finding.autoFixable && (
-          <Link className="btn primary" to="/fix">
-            이 문제 고치기
-          </Link>
-        )}
+        {showFix && <div ref={bottomRef}>{fixAction}</div>}
       </main>
     </div>
   );

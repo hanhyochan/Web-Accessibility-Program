@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import ChevronIcon from './ChevronIcon';
 
 const STEPS = [
   { id: 1, label: '설정' },
@@ -19,27 +20,6 @@ type Props = {
   nextDisabled?: boolean;
 };
 
-function ChevronIcon({ mirrored = false }: { mirrored?: boolean }) {
-  return (
-    <svg
-      width="30"
-      height="30"
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden
-      style={mirrored ? { transform: 'scaleX(-1)' } : undefined}
-    >
-      <path
-        d="M8 4 L18 12 L8 20"
-        stroke="currentColor"
-        strokeWidth="2.4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
 export default function StepHeader({
   active,
   onPrev,
@@ -51,8 +31,19 @@ export default function StepHeader({
   const showNav = active !== null;
 
   return (
-    <>
-      <header className="topbar">
+    <header className="topbar">
+      <div className="topbar-start">
+        {showNav && onPrev && (
+          <button
+            type="button"
+            className="nav-arrow"
+            aria-label="이전"
+            disabled={prevDisabled}
+            onClick={onPrev}
+          >
+            <ChevronIcon mirrored />
+          </button>
+        )}
         <button
           type="button"
           className="brand-home"
@@ -61,44 +52,35 @@ export default function StepHeader({
         >
           웹접근성 검사기
         </button>
+      </div>
 
-        <nav className="steps-process" aria-label="진행 단계">
-          {STEPS.map((s, i) => (
-            <span key={s.id} className="step-wrap">
-              <span
-                className={`step-item${s.id === active ? ' on' : ''}${active !== null && s.id < active ? ' done' : ''}`}
-              >
-                <span className="step-dot" aria-hidden />
-                {s.id}. {s.label}
-              </span>
-              {i < STEPS.length - 1 && <span className="step-sep" aria-hidden />}
+      <nav className="steps-process" aria-label="진행 단계">
+        {STEPS.map((s, i) => (
+          <span key={s.id} className="step-wrap">
+            <span
+              className={`step-item${s.id === active ? ' on' : ''}${active !== null && s.id < active ? ' done' : ''}`}
+            >
+              <span className="step-dot" aria-hidden />
+              {s.id}. {s.label}
             </span>
-          ))}
-        </nav>
-      </header>
+            {i < STEPS.length - 1 && <span className="step-sep" aria-hidden />}
+          </span>
+        ))}
+      </nav>
 
-      {showNav && (
-        <div className="step-nav">
-          <button
-            type="button"
-            className="nav-arrow"
-            aria-label="이전"
-            disabled={prevDisabled || !onPrev}
-            onClick={onPrev}
-          >
-            <ChevronIcon mirrored />
-          </button>
-          <button
-            type="button"
-            className="nav-arrow"
-            aria-label="다음"
-            disabled={nextDisabled || !onNext}
-            onClick={onNext}
-          >
-            <ChevronIcon />
-          </button>
-        </div>
+      {showNav && onNext ? (
+        <button
+          type="button"
+          className="nav-arrow"
+          aria-label="다음"
+          disabled={nextDisabled}
+          onClick={onNext}
+        >
+          <ChevronIcon />
+        </button>
+      ) : (
+        <span className="topbar-end-spacer" aria-hidden />
       )}
-    </>
+    </header>
   );
 }

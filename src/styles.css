@@ -49,6 +49,19 @@ a {
   justify-content: space-between;
   gap: 12px;
   padding: 24px 48px 18px;
+  flex-shrink: 0;
+}
+
+.topbar-start {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.topbar-end-spacer {
+  width: 52px;
+  flex-shrink: 0;
 }
 
 .brand-home {
@@ -72,17 +85,25 @@ a {
 .muted {
   color: var(--muted);
   font-size: 13px;
+  line-height: 1.8;
+}
+
+.muted.lead {
+  max-width: 520px;
 }
 
 .content {
   flex: 1;
   padding: 24px 48px 48px;
   position: relative;
-  z-index: 1;
 }
 
 .content.narrow {
   max-width: 720px;
+}
+
+.content.mid {
+  max-width: 800px;
 }
 
 .stack {
@@ -112,6 +133,12 @@ a {
   gap: 16px;
 }
 
+.cards.mode-pick {
+  width: 100%;
+  max-width: 900px;
+  text-align: left;
+}
+
 .card {
   background: var(--surface);
   border-radius: var(--radius);
@@ -119,9 +146,9 @@ a {
   flex: 1 1 260px;
 }
 
-.card h2,
 .card h3 {
   margin: 0;
+  font-size: 20px;
 }
 
 .btn {
@@ -152,6 +179,23 @@ a {
   color: var(--ink-text);
 }
 
+.btn.solid {
+  background: #6e6e6e;
+  color: #ffffff;
+  padding: 0 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  align-self: stretch;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn.solid:hover {
+  background: #5c5c5c;
+  color: #ffffff;
+}
+
 .btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
@@ -163,14 +207,63 @@ a {
   gap: 8px;
 }
 
+.field-control {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  align-items: stretch;
+}
+
+.form-local .field-control {
+  grid-template-columns: minmax(0, 1fr) var(--field-action-width, 88px);
+}
+
+.form-local .field-control .btn.solid {
+  width: 100%;
+}
+
 .field label {
   font-size: 13px;
   font-weight: 600;
 }
 
-.field input,
-.field select,
-.field textarea {
+.scope-field {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.scope-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.scope-options {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 28px;
+}
+
+.scope-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.scope-option input {
+  width: 16px;
+  height: 16px;
+  accent-color: #000;
+  cursor: pointer;
+}
+
+.field input {
   display: block;
   width: 100%;
   border: 0.5px solid var(--field-line);
@@ -178,13 +271,9 @@ a {
   border-radius: 6px;
   padding: 12px 14px;
   outline: none;
-  position: relative;
-  z-index: 1;
 }
 
-.field input:focus,
-.field select:focus,
-.field textarea:focus {
+.field input:focus {
   border-color: var(--ink);
 }
 
@@ -203,6 +292,14 @@ a {
   padding: 14px 16px;
 }
 
+button.list-row {
+  width: 100%;
+  text-align: left;
+  border: none;
+  font: inherit;
+  color: inherit;
+}
+
 .list-row.clickable {
   cursor: pointer;
 }
@@ -218,15 +315,37 @@ a {
 
 .list-select-all {
   background: transparent;
-  padding: 8px 16px;
-  align-self: flex-start;
+  padding: 0;
+  width: 100%;
+  justify-content: space-between;
+  align-items: center;
 }
 
-.inventory-url {
+.select-all-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  cursor: pointer;
+}
+
+.list-primary {
   font-size: 16px;
-  font-weight: 500;
+  font-weight: 700;
+  line-height: 1.4;
   color: var(--text);
   word-break: break-all;
+}
+
+.page-fail-reason {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.section-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  flex-shrink: 0;
 }
 
 .note {
@@ -235,6 +354,128 @@ a {
   padding: 12px 16px;
   font-size: 13px;
   color: var(--muted);
+}
+
+.stat-dash {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.rules-columns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-start;
+  margin-top: 16px;
+}
+
+.rules-col {
+  flex: 1 1 280px;
+  min-width: 0;
+}
+
+.rules-columns .list-row:not(.list-select-all) {
+  height: 92px;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+.rules-columns .list-select-all {
+  height: auto;
+}
+
+.rules-columns .list-row .grow,
+.list-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rules-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.rules-title-row .list-primary {
+  min-width: 0;
+}
+
+.chip-manual {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  color: #b71c1c;
+  background: #ffcdd2;
+  border-radius: 4px;
+  padding: 5px 8px;
+}
+
+.rules-columns .list-row .muted {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.stat-box {
+  flex: 1 1 160px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: #000;
+  color: #fff;
+  border-radius: 6px;
+  padding: 16px 20px;
+}
+
+.stat-box.tone-critical {
+  background: #e86b6b;
+}
+
+.stat-box.tone-warn {
+  background: #e8b35a;
+}
+
+.stat-box.tone-note {
+  background: #6bb3e0;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: #b3b3b3;
+  line-height: 1.8;
+}
+
+.stat-box.tone-critical .stat-label,
+.stat-box.tone-warn .stat-label,
+.stat-box.tone-note .stat-label {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.stat-value {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  word-break: break-all;
+}
+
+.list-chevron {
+  flex-shrink: 0;
+  color: #000;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.detail-arrow {
+  display: block;
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
 }
 
 .progress-track {
@@ -299,16 +540,6 @@ a {
   flex-shrink: 0;
 }
 
-.step-nav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 4px 48px 10px;
-  flex-shrink: 0;
-  pointer-events: none;
-}
-
 .nav-arrow {
   appearance: none;
   border: none;
@@ -321,9 +552,7 @@ a {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  pointer-events: auto;
-  position: relative;
-  z-index: 2;
+  flex-shrink: 0;
 }
 
 .nav-arrow:hover:not(:disabled) {
@@ -343,6 +572,7 @@ a {
 }
 
 .diff-box {
+  margin: 0;
   font-family: Consolas, 'Courier New', monospace;
   font-size: 12px;
   background: var(--surface);
@@ -360,9 +590,9 @@ a {
   padding-top: 48px;
 }
 
-.footer-nav {
+.content.empty-center {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  gap: 16px;
+  justify-content: center;
+  text-align: center;
 }

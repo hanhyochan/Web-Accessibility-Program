@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron';
+﻿import { contextBridge, ipcRenderer } from 'electron';
 
 export type CrawlPage = {
   url: string;
@@ -6,6 +6,7 @@ export type CrawlPage = {
   status: 'ok' | 'skip' | 'fail';
   discoveredFrom: string;
   included: boolean;
+  failReason?: string;
 };
 
 export type Finding = {
@@ -29,6 +30,12 @@ const api = {
     excludePatterns?: string;
   }): Promise<{ pages: CrawlPage[]; note: string; error?: boolean }> =>
     ipcRenderer.invoke('scan:crawl', payload),
+  scanFolder: (payload: {
+    sourceRoot: string;
+    maxPages: number;
+    startUrl?: string;
+  }): Promise<{ pages: CrawlPage[]; note: string; error?: boolean }> =>
+    ipcRenderer.invoke('scan:folder', payload),
   onCrawlProgress: (
     cb: (progress: { found: number; maxPages: number; currentUrl: string }) => void,
   ): (() => void) => {
@@ -44,6 +51,35 @@ const api = {
     pages: string[];
   }): Promise<{ findings: Finding[]; note: string; error?: boolean }> =>
     ipcRenderer.invoke('scan:runRule', payload),
+  runRules: (payload: {
+    ruleIds: string[];
+    pages: string[];
+  }): Promise<{ findings: Finding[]; note: string; error?: boolean }> =>
+    ipcRenderer.invoke('scan:runRules', payload),
+  onScanProgress: (
+    cb: (progress: {
+      ruleIndex: number;
+      ruleTotal: number;
+      ruleId: string;
+      pageIndex: number;
+      pageTotal: number;
+      currentUrl: string;
+    }) => void,
+  ): (() => void) => {
+    const listener = (
+      _event: unknown,
+      progress: {
+        ruleIndex: number;
+        ruleTotal: number;
+        ruleId: string;
+        pageIndex: number;
+        pageTotal: number;
+        currentUrl: string;
+      },
+    ) => cb(progress);
+    ipcRenderer.on('scan:run-progress', listener);
+    return () => ipcRenderer.removeListener('scan:run-progress', listener);
+  },
 };
 
 contextBridge.exposeInMainWorld('a11y', api);

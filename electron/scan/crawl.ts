@@ -6,6 +6,7 @@ export type CrawlPage = {
   status: 'ok' | 'skip' | 'fail';
   discoveredFrom: string;
   included: boolean;
+  failReason?: string;
 };
 
 export type CrawlProgress = {
@@ -19,7 +20,6 @@ function normalizeUrl(raw: string, base: string): string | null {
     const u = new URL(raw, base);
     if (u.protocol !== 'http:' && u.protocol !== 'https:') return null;
     u.hash = '';
-    // trailing slash normalize for root only
     let href = u.href;
     if (href.endsWith('/') && u.pathname !== '/') {
       href = href.slice(0, -1);
@@ -84,6 +84,7 @@ export async function crawlSite(options: {
           status: 'skip',
           discoveredFrom: cur.from,
           included: false,
+          failReason: '제외 패턴에 해당',
         });
         report(cur.url);
         continue;
@@ -94,13 +95,22 @@ export async function crawlSite(options: {
           waitUntil: 'domcontentloaded',
           timeout: 20000,
         });
-        const ok = !!res && res.status() < 400;
+        const status = res?.status() ?? 0;
+        const ok = !!res && status > 0 && status < 400;
+        let failReason: string | undefined;
+        if (!ok) {
+          if (status === 401 || status === 403) failReason = '로그인·권한 필요';
+          else if (status === 404) failReason = '페이지 없음(404)';
+          else if (status >= 400) failReason = `HTTP ${status}`;
+          else failReason = '응답 없음';
+        }
         results.push({
           url: cur.url,
           depth: cur.depth,
           status: ok ? 'ok' : 'fail',
           discoveredFrom: cur.from,
           included: ok,
+          failReason,
         });
         report(cur.url);
 
@@ -123,13 +133,20 @@ export async function crawlSite(options: {
             from: new URL(cur.url).pathname || '/',
           });
         }
-      } catch {
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        const failReason = /timeout/i.test(msg)
+          ? '접속 시간 초과'
+          : /net::|NS_ERROR|Navigation/i.test(msg)
+            ? '접속 실패'
+            : '페이지 열기 실패';
         results.push({
           url: cur.url,
           depth: cur.depth,
           status: 'fail',
           discoveredFrom: cur.from,
           included: false,
+          failReason,
         });
         report(cur.url);
       }

@@ -1,4 +1,7 @@
-export type AppMode = 'production' | 'local';
+﻿export type AppMode = 'production' | 'local';
+
+/** crawl: 시작 URL에서 연결 페이지 수집 / single: 시작 URL만 / folder: 로컬 폴더 HTML 전체 */
+export type ScanScope = 'crawl' | 'single' | 'folder';
 
 export type RuleEngine = 'axe' | 'axe-custom' | 'html-validate' | 'playwright-template' | 'manual';
 
@@ -18,6 +21,7 @@ export type Project = {
   mode: AppMode;
   startUrl: string;
   sourceRoot?: string;
+  scanScope: ScanScope;
   maxDepth: number;
   maxPages: number;
   excludePatterns: string;
@@ -31,6 +35,8 @@ export type InventoryPage = {
   status: 'ok' | 'skip' | 'fail';
   discoveredFrom: string;
   included: boolean;
+  /** 검사 불가·제외 사유 (있으면 기본 체크 해제) */
+  failReason?: string;
 };
 
 export type Finding = {
@@ -68,6 +74,11 @@ declare global {
         maxPages: number;
         excludePatterns?: string;
       }) => Promise<{ pages: InventoryPage[]; note: string; error?: boolean }>;
+      scanFolder: (payload: {
+        sourceRoot: string;
+        maxPages: number;
+        startUrl?: string;
+      }) => Promise<{ pages: InventoryPage[]; note: string; error?: boolean }>;
       onCrawlProgress?: (
         cb: (progress: { found: number; maxPages: number; currentUrl: string }) => void,
       ) => () => void;
@@ -75,6 +86,20 @@ declare global {
         ruleId: string;
         pages: string[];
       }) => Promise<{ findings: Finding[]; note: string; error?: boolean }>;
+      runRules?: (payload: {
+        ruleIds: string[];
+        pages: string[];
+      }) => Promise<{ findings: Finding[]; note: string; error?: boolean }>;
+      onScanProgress?: (
+        cb: (progress: {
+          ruleIndex: number;
+          ruleTotal: number;
+          ruleId: string;
+          pageIndex: number;
+          pageTotal: number;
+          currentUrl: string;
+        }) => void,
+      ) => () => void;
     };
   }
 }

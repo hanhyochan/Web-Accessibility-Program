@@ -13,7 +13,25 @@ export type Finding = {
   autoFixable: boolean;
 };
 
+export type ScanProgress = {
+  ruleIndex: number;
+  ruleTotal: number;
+  ruleId: string;
+  pageIndex: number;
+  pageTotal: number;
+  currentUrl: string;
+};
+
 const AUTO_FIXABLE = new Set(['image-alt', 'ko-blank-link-title']);
+
+function isManualRule(ruleId: string): boolean {
+  return (
+    ruleId === 'html-validate-recommended' ||
+    ruleId === 'compat-html' ||
+    ruleId.startsWith('wa-') ||
+    ruleId.startsWith('compat-')
+  );
+}
 
 /** axe에 없는 한국형 규칙 */
 async function runCustomRule(
@@ -50,79 +68,153 @@ async function runCustomRule(
   return [];
 }
 
+async function collectRuleFindings(
+  page: import('playwright').Page,
+  ruleId: string,
+  url: string,
+  findings: Finding[],
+): Promise<void> {
+  if (ruleId.startsWith('ko-')) {
+    findings.push(...(await runCustomRule(page, ruleId, url)));
+    return;
+  }
+
+  const results = await new AxeBuilder({ page }).withRules([ruleId]).analyze();
+  for (const v of results.violations) {
+    for (let ni = 0; ni < v.nodes.length; ni++) {
+      const node = v.nodes[ni];
+      findings.push({
+        id: `${ruleId}-${url}-${ni}-${findings.length}`,
+        ruleId: v.id,
+        engine: 'axe',
+        url,
+        selector: node.target?.join(' ') || '',
+        message: v.help || v.description,
+        impact: v.impact || 'moderate',
+        htmlSnippet: (node.html || '').slice(0, 240),
+        autoFixable: AUTO_FIXABLE.has(v.id),
+      });
+    }
+  }
+}
+
+/** 단일 규칙 (하위 호환) */
 export async function runRuleOnPages(options: {
   ruleId: string;
   pages: string[];
 }): Promise<{ findings: Finding[]; note: string }> {
-  const { ruleId, pages } = options;
-  const findings: Finding[] = [];
+  return runRulesOnPages({ ruleIds: [options.ruleId], pages: options.pages });
+}
 
-  // html-validate / 마크업·HTML 표준 — 다음 단계에서 실연결
-  if (ruleId === 'html-validate-recommended' || ruleId === 'compat-html') {
+/**
+ * 페이지마다 1회 접속 후 규칙을 순회.
+ * 브라우저를 규칙마다 다시 띄우지 않음 (@axe-core/playwright는 context page 필요).
+ */
+export async function runRulesOnPages(options: {
+  ruleIds: string[];
+  pages: string[];
+  onProgress?: (progress: ScanProgress) => void;
+}): Promise<{ findings: Finding[]; note: string }> {
+  const { ruleIds, pages } = options;
+  const findings: Finding[] = [];
+  const autoRules = ruleIds.filter((id) => !isManualRule(id));
+  const manualCount = ruleIds.length - autoRules.length;
+
+  if (autoRules.length === 0) {
     return {
       findings: [],
-      note: 'HTML 문법 검사(html-validate)는 다음 단계에서 연결합니다',
+      note:
+        manualCount > 0
+          ? `수동·보류 항목 ${manualCount}개 (자동 검사 없음)`
+          : '검사할 자동 규칙이 없습니다',
     };
   }
 
-  // 평가원·호환성 중 자동 엔진 미연결(수동) 항목
-  if (ruleId.startsWith('wa-') || ruleId.startsWith('compat-')) {
-    return {
-      findings: [],
-      note: `수동 확인 항목입니다 · ${ruleId} (자동 검사 미구현)`,
-    };
+  if (pages.length === 0) {
+    return { findings: [], note: '검사할 페이지가 없습니다' };
   }
 
   const browser = await launchBrowser();
+  let context: import('playwright').BrowserContext | undefined;
   try {
-    const page = await browser.newPage();
-    for (const url of pages) {
+    context = await browser.newContext({
+      ignoreHTTPSErrors: true,
+      locale: 'ko-KR',
+    });
+    const page = await context.newPage();
+
+    for (let pi = 0; pi < pages.length; pi++) {
+      const url = pages[pi];
+      let opened = false;
       try {
-        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 20000 });
-
-        if (ruleId.startsWith('ko-')) {
-          findings.push(...(await runCustomRule(page, ruleId, url)));
-          continue;
-        }
-
-        const results = await new AxeBuilder({ page }).withRules([ruleId]).analyze();
-
-        for (const v of results.violations) {
-          for (let ni = 0; ni < v.nodes.length; ni++) {
-            const node = v.nodes[ni];
-            findings.push({
-              id: `${ruleId}-${url}-${ni}-${findings.length}`,
-              ruleId: v.id,
-              engine: 'axe',
-              url,
-              selector: node.target?.join(' ') || '',
-              message: v.help || v.description,
-              impact: v.impact || 'moderate',
-              htmlSnippet: (node.html || '').slice(0, 240),
-              autoFixable: AUTO_FIXABLE.has(v.id),
-            });
-          }
-        }
+        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+        opened = true;
       } catch (err) {
-        findings.push({
-          id: `${ruleId}-${url}-error`,
-          ruleId,
-          engine: 'axe',
-          url,
-          selector: '',
-          message: `페이지 검사 실패: ${err instanceof Error ? err.message : String(err)}`,
-          impact: 'serious',
-          htmlSnippet: '',
-          autoFixable: false,
+        const msg = err instanceof Error ? err.message : String(err);
+        for (const ruleId of autoRules) {
+          findings.push({
+            id: `${ruleId}-${url}-error`,
+            ruleId,
+            engine: 'axe',
+            url,
+            selector: '',
+            message: `페이지 검사 실패: ${msg}`,
+            impact: 'serious',
+            htmlSnippet: '',
+            autoFixable: false,
+          });
+        }
+        options.onProgress?.({
+          ruleIndex: autoRules.length,
+          ruleTotal: autoRules.length,
+          ruleId: autoRules[autoRules.length - 1] || '',
+          pageIndex: pi + 1,
+          pageTotal: pages.length,
+          currentUrl: url,
         });
+        continue;
+      }
+
+      for (let ri = 0; ri < autoRules.length; ri++) {
+        const ruleId = autoRules[ri];
+        options.onProgress?.({
+          ruleIndex: ri + 1,
+          ruleTotal: autoRules.length,
+          ruleId,
+          pageIndex: pi + 1,
+          pageTotal: pages.length,
+          currentUrl: url,
+        });
+        if (!opened) continue;
+        try {
+          await collectRuleFindings(page, ruleId, url, findings);
+        } catch (err) {
+          findings.push({
+            id: `${ruleId}-${url}-error`,
+            ruleId,
+            engine: 'axe',
+            url,
+            selector: '',
+            message: `페이지 검사 실패: ${err instanceof Error ? err.message : String(err)}`,
+            impact: 'serious',
+            htmlSnippet: '',
+            autoFixable: false,
+          });
+        }
       }
     }
   } finally {
+    await context?.close().catch(() => undefined);
     await browser.close();
   }
 
+  const failCount = findings.filter((f) =>
+    String(f.message).startsWith('페이지 검사 실패'),
+  ).length;
   return {
     findings,
-    note: `axe · ${ruleId} · ${pages.length}페이지 · 위반 ${findings.length}건`,
+    note: `axe · 규칙 ${autoRules.length} · 페이지 ${pages.length} · 위반 ${findings.length - failCount} · 실패 ${failCount}${
+      manualCount ? ` · 수동 ${manualCount}` : ''
+    }`,
   };
 }

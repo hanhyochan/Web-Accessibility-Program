@@ -8,21 +8,16 @@ type AppState = {
   rules: RuleDef[];
   inventory: InventoryPage[];
   job: ScanJob;
-  selectedFindingId: string | null;
-  rulePanelOpen: boolean;
 
   setModeDraft: (mode: AppMode) => void;
   createProject: (input: Omit<Project, 'id' | 'createdAt'>) => void;
-  updateProject: (patch: Partial<Project>) => void;
-  setRules: (rules: RuleDef[]) => void;
   toggleRule: (id: string) => void;
+  setPackRulesEnabled: (pack: string, enabled: boolean) => void;
   setInventory: (pages: InventoryPage[]) => void;
   togglePageIncluded: (index: number) => void;
   setAllPagesIncluded: (included: boolean) => void;
   setJob: (job: Partial<ScanJob>) => void;
   appendFindings: (findings: Finding[]) => void;
-  setSelectedFindingId: (id: string | null) => void;
-  setRulePanelOpen: (open: boolean) => void;
   resetScan: () => void;
 };
 
@@ -42,8 +37,6 @@ export const useAppStore = create<AppState>((set) => ({
   rules: RULE_CATALOG.map((r) => ({ ...r })),
   inventory: [],
   job: idleJob(),
-  selectedFindingId: null,
-  rulePanelOpen: false,
 
   setModeDraft: (mode) => set({ modeDraft: mode }),
 
@@ -56,17 +49,16 @@ export const useAppStore = create<AppState>((set) => ({
       },
       inventory: [],
       job: idleJob(),
-      selectedFindingId: null,
     }),
-
-  updateProject: (patch) =>
-    set((s) => (s.project ? { project: { ...s.project, ...patch } } : s)),
-
-  setRules: (rules) => set({ rules }),
 
   toggleRule: (id) =>
     set((s) => ({
       rules: s.rules.map((r) => (r.id === id ? { ...r, enabled: !r.enabled } : r)),
+    })),
+
+  setPackRulesEnabled: (pack, enabled) =>
+    set((s) => ({
+      rules: s.rules.map((r) => (r.pack === pack ? { ...r, enabled } : r)),
     })),
 
   setInventory: (pages) => {
@@ -82,14 +74,20 @@ export const useAppStore = create<AppState>((set) => ({
 
   togglePageIncluded: (index) =>
     set((s) => ({
-      inventory: s.inventory.map((p, i) =>
-        i === index ? { ...p, included: !p.included } : p,
-      ),
+      inventory: s.inventory.map((p, i) => {
+        if (i !== index) return p;
+        // 접속 실패한 페이지는 검사 대상에 넣지 않음
+        if (p.status !== 'ok' && !p.included) return p;
+        return { ...p, included: !p.included };
+      }),
     })),
 
   setAllPagesIncluded: (included) =>
     set((s) => ({
-      inventory: s.inventory.map((p) => ({ ...p, included })),
+      inventory: s.inventory.map((p) => ({
+        ...p,
+        included: p.status === 'ok' ? included : false,
+      })),
     })),
 
   setJob: (job) => set((s) => ({ job: { ...s.job, ...job } })),
@@ -97,9 +95,5 @@ export const useAppStore = create<AppState>((set) => ({
   appendFindings: (findings) =>
     set((s) => ({ job: { ...s.job, findings: [...s.job.findings, ...findings] } })),
 
-  setSelectedFindingId: (id) => set({ selectedFindingId: id }),
-
-  setRulePanelOpen: (open) => set({ rulePanelOpen: open }),
-
-  resetScan: () => set({ job: idleJob(), selectedFindingId: null }),
+  resetScan: () => set({ job: idleJob() }),
 }));

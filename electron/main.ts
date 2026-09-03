@@ -1,7 +1,8 @@
-import { app, BrowserWindow, ipcMain, dialog } from 'electron';
+﻿import { app, BrowserWindow, ipcMain, dialog } from 'electron';
 import path from 'node:path';
 import { crawlSite } from './scan/crawl';
-import { runRuleOnPages } from './scan/axeScan';
+import { scanSourceFolder } from './scan/folderScan';
+import { runRuleOnPages, runRulesOnPages } from './scan/axeScan';
 
 process.env.DIST = path.join(__dirname, '../dist');
 process.env.VITE_PUBLIC = app.isPackaged
@@ -72,10 +73,55 @@ app.whenReady().then(() => {
   );
 
   ipcMain.handle(
+    'scan:folder',
+    async (
+      _event,
+      payload: {
+        sourceRoot: string;
+        maxPages: number;
+        startUrl?: string;
+      },
+    ) => {
+      try {
+        return scanSourceFolder(payload);
+      } catch (err) {
+        return {
+          pages: [],
+          note: `폴더 스캔 실패: ${err instanceof Error ? err.message : String(err)}`,
+          error: true,
+        };
+      }
+    },
+  );
+
+  ipcMain.handle(
     'scan:runRule',
     async (_event, payload: { ruleId: string; pages: string[] }) => {
       try {
         return await runRuleOnPages(payload);
+      } catch (err) {
+        return {
+          findings: [],
+          note: `검사 실패: ${err instanceof Error ? err.message : String(err)}`,
+          error: true,
+        };
+      }
+    },
+  );
+
+  ipcMain.handle(
+    'scan:runRules',
+    async (
+      event,
+      payload: { ruleIds: string[]; pages: string[] },
+    ) => {
+      try {
+        return await runRulesOnPages({
+          ...payload,
+          onProgress: (progress) => {
+            event.sender.send('scan:run-progress', progress);
+          },
+        });
       } catch (err) {
         return {
           findings: [],

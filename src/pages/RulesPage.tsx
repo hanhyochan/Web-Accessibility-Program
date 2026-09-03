@@ -1,6 +1,13 @@
+import { useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import PageIntro from '../components/PageIntro';
+import SelectAllRow from '../components/SelectAllRow';
+import StatDash from '../components/StatDash';
 import StepHeader from '../components/StepHeader';
+import { useIndeterminate } from '../hooks/useIndeterminate';
+import { useOverflowAction } from '../hooks/useOverflowAction';
 import { useAppStore } from '../store';
+import type { RuleDef } from '../types';
 
 /** 표시용 — 없으면 catalog label 사용 */
 const COPY: Record<string, { title: string; desc: string }> = {
@@ -186,52 +193,131 @@ const COPY: Record<string, { title: string; desc: string }> = {
   },
 };
 
+function packRules(rules: RuleDef[], pack: string) {
+  return rules
+    .filter((r) => r.pack === pack)
+    .slice()
+    .sort((a, b) => Number(a.engine === 'manual') - Number(b.engine === 'manual'));
+}
+
 export default function RulesPage() {
   const navigate = useNavigate();
+  const project = useAppStore((s) => s.project);
   const rules = useAppStore((s) => s.rules);
   const toggleRule = useAppStore((s) => s.toggleRule);
+  const setPackRulesEnabled = useAppStore((s) => s.setPackRulesEnabled);
   const inventory = useAppStore((s) => s.inventory);
+  const a11ySelectAllRef = useRef<HTMLInputElement>(null);
+  const compatSelectAllRef = useRef<HTMLInputElement>(null);
+  const showManualChip = project?.mode === 'local';
   const enabled = rules.filter((r) => r.enabled).length;
-  const pages = inventory.filter((p) => p.included).length;
+  const pages = inventory.filter((p) => p.included && p.status === 'ok').length;
+  const a11yRules = packRules(rules, 'wa-a11y');
+  const compatRules = packRules(rules, 'wa-compat');
+  const a11yEnabled = a11yRules.filter((r) => r.enabled).length;
+  const compatEnabled = compatRules.filter((r) => r.enabled).length;
+  const a11yAll = a11yRules.length > 0 && a11yEnabled === a11yRules.length;
+  const compatAll = compatRules.length > 0 && compatEnabled === compatRules.length;
+  const { bottomRef, showTop } = useOverflowAction([
+    a11yRules.length,
+    compatRules.length,
+    enabled,
+  ]);
+  useIndeterminate(a11ySelectAllRef, a11yEnabled, a11yRules.length);
+  useIndeterminate(compatSelectAllRef, compatEnabled, compatRules.length);
+
+  const renderRule = (r: RuleDef, index: number) => {
+    const copy = COPY[r.id] ?? { title: r.label, desc: r.description || r.id };
+    const title = copy.title
+      .replace(/^WA\s*\d+\.\s*/i, '')
+      .replace(/^호환\s*[\d.]+\s*/, '');
+    return (
+      <label key={r.id} className="list-row">
+        <input
+          type="checkbox"
+          checked={r.enabled}
+          onChange={() => toggleRule(r.id)}
+        />
+        <span className="grow">
+          <span className="rules-title-row">
+            <span className="list-primary">
+              {index + 1}. {title}
+            </span>
+            {showManualChip && r.engine === 'manual' && (
+              <span className="chip-manual">수동</span>
+            )}
+          </span>
+          <span className="muted">{copy.desc}</span>
+        </span>
+      </label>
+    );
+  };
+
+  const startScan = () => navigate('/scanning');
+  const canStart = enabled > 0 && pages > 0;
+  const primary = (
+    <button
+      className="btn primary"
+      type="button"
+      disabled={!canStart}
+      onClick={startScan}
+    >
+      검사 시작
+    </button>
+  );
 
   return (
     <div className="app-shell">
       <StepHeader
         active={3}
         onPrev={() => navigate('/inventory')}
-        onNext={() => navigate('/scanning')}
-        nextDisabled={enabled === 0 || pages === 0}
+        onNext={startScan}
+        nextDisabled={!canStart}
       />
       <main className="content stack lg">
-        <div>
-          <h2 className="title-xl">무엇을 검사할까요?</h2>
-          <p className="muted">
-            평가원·문화정보원(통합모니터링) 진단보고서 기준을 모두 넣었습니다. 자동/수동이
-            섞여 있습니다.
-          </p>
+        <PageIntro
+          title="무엇을 검사할까요?"
+          description="한국정보접근성인증평가원 전문가 심사 기준(한국형 웹 콘텐츠 접근성 지침 2.2)과 한국문화정보원 문화정보서비스 통합모니터링 웹호환성 진단 기준(전자정부 웹사이트 품질관리 지침)을 기준으로 검사합니다."
+          topAction={showTop ? primary : undefined}
+        />
+        <StatDash
+          items={[
+            { label: '웹접근성', count: a11yEnabled },
+            { label: '웹호환성', count: compatEnabled },
+          ]}
+        />
+        <div className="rules-columns">
+          {(
+            [
+              {
+                title: '웹접근성',
+                pack: 'wa-a11y',
+                list: a11yRules,
+                all: a11yAll,
+                ref: a11ySelectAllRef,
+              },
+              {
+                title: '웹호환성',
+                pack: 'wa-compat',
+                list: compatRules,
+                all: compatAll,
+                ref: compatSelectAllRef,
+              },
+            ] as const
+          ).map((col) => (
+            <div key={col.pack} className="rules-col stack">
+              <div className="section-title">{col.title}</div>
+              <SelectAllRow
+                inputRef={col.ref}
+                checked={col.all}
+                onChange={(v) => setPackRulesEnabled(col.pack, v)}
+                label="전체 선택"
+              />
+              <div className="list">{col.list.map(renderRule)}</div>
+            </div>
+          ))}
         </div>
-        <div className="note">
-          선택 {enabled}개 · 검사 페이지 {pages}개 · 접근성 32(+33) + 웹호환성 9
-        </div>
-        <div className="list">
-          {rules.map((r) => {
-            const copy = COPY[r.id] ?? { title: r.label, desc: r.description || r.id };
-            return (
-              <label key={r.id} className="list-row">
-                <input
-                  type="checkbox"
-                  checked={r.enabled}
-                  onChange={() => toggleRule(r.id)}
-                />
-                <span className="grow">
-                  <strong>{copy.title}</strong>
-                  <br />
-                  <span className="muted">{copy.desc}</span>
-                </span>
-              </label>
-            );
-          })}
-        </div>
+        <div ref={bottomRef}>{primary}</div>
       </main>
     </div>
   );
