@@ -12,7 +12,7 @@ const STEPS = [
 export type ProcessStep = 1 | 2 | 3 | 4 | 5;
 
 type Props = {
-  /** 프로세스 단계. 홈 화면이면 null */
+  /** 프로세스 단계 (1=설정 … 5=결과) */
   active: ProcessStep | null;
   onPrev?: () => void;
   onNext?: () => void;

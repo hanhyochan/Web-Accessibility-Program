@@ -30,9 +30,12 @@ function normalizeUrl(raw: string, base: string): string | null {
   }
 }
 
-function shouldSkip(url: string, excludePatterns: string[]): boolean {
+function isStaticAsset(url: string): boolean {
+  return /\.(pdf|jpg|jpeg|png|gif|svg|zip|css|js|woff2?|ico)(\?|$)/i.test(url);
+}
+
+function matchesExclude(url: string, excludePatterns: string[]): boolean {
   const lower = url.toLowerCase();
-  if (/\.(pdf|jpg|jpeg|png|gif|svg|zip|css|js|woff2?|ico)(\?|$)/i.test(lower)) return true;
   return excludePatterns.some((p) => p && lower.includes(p.toLowerCase()));
 }
 
@@ -77,14 +80,27 @@ export async function crawlSite(options: {
       visited.add(cur.url);
       report(cur.url);
 
-      if (shouldSkip(cur.url, exclude)) {
+      if (isStaticAsset(cur.url)) {
         results.push({
           url: cur.url,
           depth: cur.depth,
           status: 'skip',
           discoveredFrom: cur.from,
           included: false,
-          failReason: '제외 패턴에 해당',
+          failReason: '미디어·파일',
+        });
+        report(cur.url);
+        continue;
+      }
+
+      if (matchesExclude(cur.url, exclude)) {
+        results.push({
+          url: cur.url,
+          depth: cur.depth,
+          status: 'skip',
+          discoveredFrom: cur.from,
+          included: false,
+          failReason: '검사 제외 페이지',
         });
         report(cur.url);
         continue;
@@ -99,7 +115,7 @@ export async function crawlSite(options: {
         const ok = !!res && status > 0 && status < 400;
         let failReason: string | undefined;
         if (!ok) {
-          if (status === 401 || status === 403) failReason = '로그인·권한 필요';
+          if (status === 401 || status === 403) failReason = '검사 제외 페이지';
           else if (status === 404) failReason = '페이지 없음(404)';
           else if (status >= 400) failReason = `HTTP ${status}`;
           else failReason = '응답 없음';

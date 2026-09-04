@@ -1,4 +1,4 @@
-﻿import { contextBridge, ipcRenderer } from 'electron';
+import { contextBridge, ipcRenderer } from 'electron';
 
 export type CrawlPage = {
   url: string;
@@ -15,9 +15,11 @@ export type Finding = {
   engine: string;
   url: string;
   selector: string;
+  locationLabel?: string;
   message: string;
   impact: string;
   htmlSnippet: string;
+  fixedSnippet?: string;
   autoFixable: boolean;
 };
 
@@ -80,6 +82,13 @@ const api = {
     ipcRenderer.on('scan:run-progress', listener);
     return () => ipcRenderer.removeListener('scan:run-progress', listener);
   },
+  exportPdf: (payload: {
+    projectName: string;
+    fileName: string;
+    findings: Finding[];
+    exportedAt: string;
+  }): Promise<{ ok: boolean; canceled?: boolean; path?: string; error?: string }> =>
+    ipcRenderer.invoke('export:pdf', payload),
 };
 
 contextBridge.exposeInMainWorld('a11y', api);

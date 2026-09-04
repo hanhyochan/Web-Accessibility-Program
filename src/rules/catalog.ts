@@ -84,26 +84,26 @@ export const RULE_CATALOG: RuleDef[] = [
   {
     id: 'wa-10-keyboard',
     label: 'WA 10. 키보드 사용 보장',
-    engine: 'manual',
+    engine: 'axe-custom',
     pack: 'wa-a11y',
     enabled: true,
-    description: '모든 기능은 키보드만으로도 사용 가능 (전문가 심사)',
+    description: 'DOM으로 확정 가능한 키보드·초점 문제 + 수동 확인 권유',
   },
   {
     id: 'wa-11-focus',
     label: 'WA 11. 초점 이동과 표시',
-    engine: 'manual',
+    engine: 'axe-custom',
     pack: 'wa-a11y',
     enabled: true,
-    description: '초점은 논리적으로 이동·표시 (전문가 심사)',
+    description: 'tabindex·outline 제거 등 확정 가능한 초점 문제',
   },
   {
     id: 'wa-12-target-size',
     label: 'WA 12. 조작 가능',
-    engine: 'manual',
+    engine: 'axe-custom',
     pack: 'wa-a11y',
     enabled: true,
-    description: '사용자 입력·컨트롤은 조작 가능하도록 제공',
+    description: '클릭 영역 24×24(필수)·44×44(권장) CSS px',
   },
   {
     id: 'wa-13-char-key',
@@ -294,10 +294,10 @@ export const RULE_CATALOG: RuleDef[] = [
   {
     id: 'compat-html',
     label: '호환 1.1 (X)HTML 표준 준수',
-    engine: 'html-validate',
+    engine: 'manual',
     pack: 'wa-compat',
     enabled: true,
-    description: '웹페이지 문법·HTML5 기술표준 준수',
+    description: 'W3C Markup·HTML5 문법·중첩·속성 (전자정부 품질관리 지침)',
   },
   {
     id: 'compat-css',
@@ -305,7 +305,7 @@ export const RULE_CATALOG: RuleDef[] = [
     engine: 'manual',
     pack: 'wa-compat',
     enabled: true,
-    description: '시각적 속성은 CSS 기술표준 준수',
+    description: 'W3C CSS·시각 속성 기술표준',
   },
   {
     id: 'compat-utf8',
@@ -337,7 +337,7 @@ export const RULE_CATALOG: RuleDef[] = [
     engine: 'manual',
     pack: 'wa-compat',
     enabled: true,
-    description: '동적 기능이 모든 브라우저에서 동등 동작',
+    description: 'Chrome·Edge·Whale 등에서 동적 기능 동등 동작',
   },
   {
     id: 'compat-display',
@@ -353,7 +353,7 @@ export const RULE_CATALOG: RuleDef[] = [
     engine: 'manual',
     pack: 'wa-compat',
     enabled: true,
-    description: '모바일 OS에서 동등 동작 (반응형/모바일 전용)',
+    description: '모바일 OS 동등 동작 (반응형/전용 없으면 감점)',
   },
   {
     id: 'compat-m-display',
@@ -361,17 +361,27 @@ export const RULE_CATALOG: RuleDef[] = [
     engine: 'manual',
     pack: 'wa-compat',
     enabled: true,
-    description: '모바일용 화면으로 표시 (PC 화면만이면 감점)',
+    description: '모바일용 화면 표시 (PC 화면만이면 감점)',
   },
 
   // —— 국내 관행 추가 ——
   {
     id: 'ko-blank-link-title',
-    label: '새 창 링크 title 안내',
+    label: '새 창 열림 안내',
     engine: 'axe-custom',
     pack: 'wa-a11y',
     enabled: true,
     autoFixable: true,
-    description: 'target=_blank title에 새창 (WA 26 보조)',
+    description:
+      'target=_blank면 title·aria-label·숨김 텍스트 중 하나로 새창열림 안내 (WA 26 보조)',
+  },
+  {
+    id: 'ko-linked-img-empty-alt',
+    label: '컨트롤 이미지 대체 텍스트',
+    engine: 'axe-custom',
+    pack: 'wa-a11y',
+    enabled: true,
+    description:
+      'a·button 등 컨트롤에 이미지만 있으면 비어 있지 않은 alt 필수. 설명 텍스트가 있으면 alt="" 허용',
   },
 ];

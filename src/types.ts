@@ -1,7 +1,7 @@
-﻿export type AppMode = 'production' | 'local';
+﻿export type AppMode = 'production';
 
-/** crawl: 시작 URL에서 연결 페이지 수집 / single: 시작 URL만 / folder: 로컬 폴더 HTML 전체 */
-export type ScanScope = 'crawl' | 'single' | 'folder';
+/** crawl: 시작 URL에서 연결 페이지 수집 / single: 시작 URL만 */
+export type ScanScope = 'crawl' | 'single';
 
 export type RuleEngine = 'axe' | 'axe-custom' | 'html-validate' | 'playwright-template' | 'manual';
 
@@ -20,7 +20,6 @@ export type Project = {
   name: string;
   mode: AppMode;
   startUrl: string;
-  sourceRoot?: string;
   scanScope: ScanScope;
   maxDepth: number;
   maxPages: number;
@@ -45,9 +44,13 @@ export type Finding = {
   engine: string;
   url: string;
   selector: string;
+  /** 사람이 읽기 쉬운 위치 설명 (부모 영역·몇 번째·클래스) */
+  locationLabel?: string;
   message: string;
   impact: string;
   htmlSnippet: string;
+  /** 접근성에 맞게 고친 예시 코드 */
+  fixedSnippet?: string;
   autoFixable: boolean;
 };
 
@@ -74,11 +77,6 @@ declare global {
         maxPages: number;
         excludePatterns?: string;
       }) => Promise<{ pages: InventoryPage[]; note: string; error?: boolean }>;
-      scanFolder: (payload: {
-        sourceRoot: string;
-        maxPages: number;
-        startUrl?: string;
-      }) => Promise<{ pages: InventoryPage[]; note: string; error?: boolean }>;
       onCrawlProgress?: (
         cb: (progress: { found: number; maxPages: number; currentUrl: string }) => void,
       ) => () => void;
@@ -100,6 +98,12 @@ declare global {
           currentUrl: string;
         }) => void,
       ) => () => void;
+      exportPdf?: (payload: {
+        projectName: string;
+        fileName: string;
+        findings: Finding[];
+        exportedAt: string;
+      }) => Promise<{ ok: boolean; canceled?: boolean; path?: string; error?: string }>;
     };
   }
 }

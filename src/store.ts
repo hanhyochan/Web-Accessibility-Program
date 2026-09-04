@@ -1,15 +1,13 @@
 import { create } from 'zustand';
 import { RULE_CATALOG } from './rules/catalog';
-import type { AppMode, Finding, InventoryPage, Project, RuleDef, ScanJob } from './types';
+import type { Finding, InventoryPage, Project, RuleDef, ScanJob } from './types';
 
 type AppState = {
-  modeDraft: AppMode | null;
   project: Project | null;
   rules: RuleDef[];
   inventory: InventoryPage[];
   job: ScanJob;
 
-  setModeDraft: (mode: AppMode) => void;
   createProject: (input: Omit<Project, 'id' | 'createdAt'>) => void;
   toggleRule: (id: string) => void;
   setPackRulesEnabled: (pack: string, enabled: boolean) => void;
@@ -32,23 +30,22 @@ const idleJob = (): ScanJob => ({
 });
 
 export const useAppStore = create<AppState>((set) => ({
-  modeDraft: null,
   project: null,
   rules: RULE_CATALOG.map((r) => ({ ...r })),
   inventory: [],
   job: idleJob(),
 
-  setModeDraft: (mode) => set({ modeDraft: mode }),
-
   createProject: (input) =>
     set({
       project: {
         ...input,
+        mode: 'production',
         id: `p-${Date.now()}`,
         createdAt: new Date().toISOString(),
       },
       inventory: [],
       job: idleJob(),
+      rules: RULE_CATALOG.map((r) => ({ ...r })),
     }),
 
   toggleRule: (id) =>

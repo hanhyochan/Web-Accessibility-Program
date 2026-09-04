@@ -1,14 +1,12 @@
 import type { ReactNode } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { useAppStore } from './store';
-import ModeSelectPage from './pages/ModeSelectPage';
 import NewProjectPage from './pages/NewProjectPage';
 import InventoryPage from './pages/InventoryPage';
 import RulesPage from './pages/RulesPage';
 import ScanningPage from './pages/ScanningPage';
 import ResultsPage from './pages/ResultsPage';
-import FindingDetailPage from './pages/FindingDetailPage';
-import FixDiffPage from './pages/FixDiffPage';
+import PageFindingsPage from './pages/PageFindingsPage';
 import ExportPage from './pages/ExportPage';
 
 function NeedProject({ children }: { children: ReactNode }) {
@@ -20,8 +18,8 @@ function NeedProject({ children }: { children: ReactNode }) {
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<ModeSelectPage />} />
-      <Route path="/project/new" element={<NewProjectPage />} />
+      <Route path="/" element={<NewProjectPage />} />
+      <Route path="/project/new" element={<Navigate to="/" replace />} />
       <Route
         path="/inventory"
         element={
@@ -55,21 +53,15 @@ export default function App() {
         }
       />
       <Route
-        path="/findings/:id"
+        path="/results/page/:pageKey"
         element={
           <NeedProject>
-            <FindingDetailPage />
+            <PageFindingsPage />
           </NeedProject>
         }
       />
-      <Route
-        path="/fix"
-        element={
-          <NeedProject>
-            <FixDiffPage />
-          </NeedProject>
-        }
-      />
+      <Route path="/findings/:id" element={<Navigate to="/results" replace />} />
+      <Route path="/fix" element={<Navigate to="/results" replace />} />
       <Route
         path="/export"
         element={

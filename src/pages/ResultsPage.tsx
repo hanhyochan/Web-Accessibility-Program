@@ -3,34 +3,41 @@ import DetailArrowIcon from '../components/DetailArrowIcon';
 import PageIntro from '../components/PageIntro';
 import StepHeader from '../components/StepHeader';
 import StatDash from '../components/StatDash';
+import { findingTitle, impactChip, impactTone } from '../findingsUi';
 import { formatCountUnit } from '../format';
 import { useAppStore } from '../store';
+import type { Finding } from '../types';
 
-const TITLE: Record<string, string> = {
-  'image-alt': '이미지에 대체 텍스트 없음',
-  'ko-blank-link-title': '새 창 링크에 안내 없음',
-  label: '입력칸 이름 없음',
-  'link-name': '링크 이름이 모호함',
-  'button-name': '버튼 이름 없음',
-};
-
-function shortPath(url: string) {
-  try {
-    const p = new URL(url).pathname;
-    return p === '/' ? '홈' : p;
-  } catch {
-    return url;
+function groupByUrl(findings: Finding[]) {
+  const map = new Map<string, Finding[]>();
+  for (const f of findings) {
+    const list = map.get(f.url);
+    if (list) list.push(f);
+    else map.set(f.url, [f]);
   }
+  return Array.from(map.entries()).map(([url, items]) => ({ url, items }));
+}
+
+/** 목록용: 같은 규칙 오류는 한 번만 (가장 높은 심각도 유지) */
+function uniqueFindingsByRule(items: Finding[]): Finding[] {
+  const rank = (impact: string) =>
+    impact === 'critical' ? 3 : impact === 'serious' ? 2 : impact === 'moderate' ? 1 : 0;
+  const best = new Map<string, Finding>();
+  for (const f of items) {
+    const prev = best.get(f.ruleId);
+    if (!prev || rank(f.impact) > rank(prev.impact)) best.set(f.ruleId, f);
+  }
+  return Array.from(best.values());
 }
 
 export default function ResultsPage() {
   const navigate = useNavigate();
-  const project = useAppStore((s) => s.project)!;
   const job = useAppStore((s) => s.job);
 
   const critical = job.findings.filter((f) => f.impact === 'critical').length;
   const serious = job.findings.filter((f) => f.impact === 'serious').length;
   const other = Math.max(0, job.findings.length - critical - serious);
+  const pages = groupByUrl(job.findings);
 
   return (
     <div className="app-shell">
@@ -41,7 +48,7 @@ export default function ResultsPage() {
           description={
             job.findings.length === 0
               ? '지금은 표시할 문제가 없습니다.'
-              : `고치면 좋은 항목이 ${formatCountUnit(job.findings.length)} 있습니다. 아래부터 보면 됩니다.`
+              : `페이지 ${formatCountUnit(pages.length)} · 오류 ${formatCountUnit(job.findings.length)}. 페이지를 눌러 자세히 보세요.`
           }
         />
         <StatDash
@@ -51,30 +58,35 @@ export default function ResultsPage() {
             { label: '참고', count: other, tone: 'note' },
           ]}
         />
-        <div className="list">
-          {job.findings.map((f) => (
+        <div className="result-page-list">
+          {pages.map(({ url, items }) => (
             <button
-              key={f.id}
+              key={url}
               type="button"
-              className="list-row clickable"
-              onClick={() => navigate(`/findings/${encodeURIComponent(f.id)}`)}
+              className="result-page-card"
+              onClick={() => navigate(`/results/page/${encodeURIComponent(url)}`)}
             >
-              <span className="grow list-stack">
-                <span className="list-primary">{TITLE[f.ruleId] || f.message}</span>
-                <span className="muted">{shortPath(f.url)}</span>
-              </span>
-              <span className="list-chevron" aria-hidden>
+              <div className="result-page-head">
+                <span className="list-primary result-url-title">{url}</span>
+                <span className="result-page-count">{formatCountUnit(items.length)}</span>
+              </div>
+              <span className="result-page-arrow list-chevron" aria-hidden>
                 <DetailArrowIcon />
               </span>
+              <div className="result-error-rows">
+                {uniqueFindingsByRule(items).map((f) => (
+                  <div key={f.ruleId} className="result-error-pill">
+                    <span className={`result-chip tone-${impactTone(f.impact)}`}>
+                      {impactChip(f.impact)}
+                    </span>
+                    <span className="result-error-title">{findingTitle(f.ruleId, f.message)}</span>
+                  </div>
+                ))}
+              </div>
             </button>
           ))}
         </div>
         <div className="row">
-          {project.mode === 'local' && (
-            <button className="btn primary" type="button" onClick={() => navigate('/fix')}>
-              문제 있는 코드 고치기
-            </button>
-          )}
           <button className="btn" type="button" onClick={() => navigate('/export')}>
             보고서 받기
           </button>

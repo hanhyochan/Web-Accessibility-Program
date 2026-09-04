@@ -31,29 +31,8 @@ export default function InventoryPage() {
     setProgress({ found: 0, maxPages: project.maxPages, currentUrl: '' });
     const stopProgress = window.a11y?.onCrawlProgress?.((p) => setProgress(p));
     try {
-      if (project.scanScope === 'folder') {
-        if (!window.a11y?.scanFolder || !project.sourceRoot) {
-          alert('로컬 폴더 스캔을 사용할 수 없습니다.');
-          return;
-        }
-        const result = await window.a11y.scanFolder({
-          sourceRoot: project.sourceRoot,
-          maxPages: project.maxPages,
-          startUrl: project.startUrl || undefined,
-        });
-        setInventory(result.pages);
-        if (result.error) alert(result.note);
-        else if (result.pages.length > 0 && result.pages.every((p) => !p.included)) {
-          alert(
-            result.note +
-              '\n\n검사 가능한 페이지가 없습니다. 시작 URL을 입력한 뒤 다시 찾거나, URL 크롤/단일 페이지 범위를 사용하세요.',
-          );
-        }
-        return;
-      }
-
       if (!window.a11y?.crawl) {
-        const base = (project.startUrl || 'http://localhost').replace(/\/$/, '');
+        const base = (project.startUrl || 'https://example.com').replace(/\/$/, '');
         setInventory([
           {
             url: `${base}/`,
@@ -97,15 +76,13 @@ export default function InventoryPage() {
   const scopeHint =
     project.scanScope === 'single'
       ? '시작 주소 한 페이지만 검사합니다.'
-      : project.scanScope === 'folder'
-        ? '로컬 폴더의 HTML·JSP를 모읍니다. JSP는 시작 URL이 있으면 서버 주소로 매핑합니다.'
-        : '시작 주소에서 연결된 페이지를 모았습니다. 검사 불가 항목은 이유가 표시됩니다.';
+      : '시작 주소에서 연결된 페이지를 모았습니다. 검사 불가 항목은 이유가 표시됩니다.';
 
   return (
     <div className="app-shell">
       <StepHeader
         active={2}
-        onPrev={() => navigate('/project/new')}
+        onPrev={() => navigate('/')}
         onNext={() => navigate('/rules')}
         nextDisabled={included === 0 || busy}
       />
@@ -118,11 +95,6 @@ export default function InventoryPage() {
       ) : inventory.length === 0 ? (
         <main className="content empty-center stack">
           <p className="muted">검사 가능한 페이지가 없습니다</p>
-          {project.scanScope === 'folder' && (
-            <p className="muted">
-              HTML이 없거나 JSP만 있는 프로젝트는 시작 URL을 넣고 다시 찾거나, URL 크롤을 사용하세요.
-            </p>
-          )}
           <button className="btn solid" type="button" disabled={busy} onClick={() => void collect()}>
             다시 찾기
           </button>
@@ -173,7 +145,11 @@ export default function InventoryPage() {
                     {p.failReason && (
                       <span className="page-fail-reason">
                         {' '}
-                        ({p.failReason}으로 검사 불가)
+                        (
+                        {p.failReason === '검사 제외 페이지'
+                          ? p.failReason
+                          : `${p.failReason}으로 검사 불가`}
+                        )
                       </span>
                     )}
                   </span>
