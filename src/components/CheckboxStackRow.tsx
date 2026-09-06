@@ -3,6 +3,7 @@ type Props = {
   desc: string;
   checked?: boolean;
   defaultChecked?: boolean;
+  disabled?: boolean;
   onChange?: () => void;
 };
 
@@ -12,12 +13,14 @@ export default function CheckboxStackRow({
   desc,
   checked,
   defaultChecked,
+  disabled,
   onChange,
 }: Props) {
   return (
-    <label className="list-row">
+    <label className={`list-row${disabled ? ' is-disabled' : ''}`}>
       <input
         type="checkbox"
+        disabled={disabled}
         {...(onChange
           ? { checked: !!checked, onChange }
           : { defaultChecked: !!defaultChecked })}

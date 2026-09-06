@@ -1,8 +1,10 @@
 import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ProgressPanel from '../components/ProgressPanel';
+import ScrollTopButton from '../components/ScrollTopButton';
 import StepHeader from '../components/StepHeader';
 import { formatCountUnit } from '../format';
+import { useOverflowAction } from '../hooks/useOverflowAction';
 import { useAppStore } from '../store';
 
 /** StrictMode 이중 mount 시 검사가 두 번 도는 것 방지 */
@@ -18,6 +20,8 @@ export default function ScanningPage() {
   const appendFindings = useAppStore((s) => s.appendFindings);
   const resetScan = useAppStore((s) => s.resetScan);
   const started = useRef(false);
+  const pctFloors = useRef<Record<string, number>>({});
+  const pctFloorJobId = useRef('');
 
   useEffect(() => {
     if (started.current) return;
@@ -31,6 +35,7 @@ export default function ScanningPage() {
         .map((p) => p.url);
       if (enabledRules.length === 0 || pages.length === 0) {
         setJob({ status: 'error', note: '검사 항목 또는 페이지가 없습니다.' });
+        navigate('/results');
         return;
       }
 
@@ -59,6 +64,7 @@ export default function ScanningPage() {
         });
       });
 
+      let failed = false;
       try {
         if (window.a11y?.runRules) {
           const result = await window.a11y.runRules({
@@ -103,25 +109,59 @@ export default function ScanningPage() {
           ]);
           setJob({ progressPage: pages.length });
         }
+      } catch (err) {
+        failed = true;
+        setJob({
+          status: 'error',
+          note: err instanceof Error ? err.message : String(err),
+        });
       } finally {
         stopProgress?.();
       }
 
       if (epoch !== scanEpoch) return;
-      setJob({ status: 'done', note: `${project.name} 검사 완료` });
+      if (!failed) setJob({ status: 'done', note: `${project.name} 검사 완료` });
       navigate('/results');
     };
 
     void run();
   }, [appendFindings, inventory, navigate, project.name, resetScan, rules, setJob]);
 
-  const total = job.progressRuleTotal * Math.max(job.progressPageTotal, 1) || 1;
-  const done =
-    (job.progressRule - 1) * Math.max(job.progressPageTotal, 1) + job.progressPage;
-  const pct = Math.min(100, Math.round((done / total) * 100));
+  useEffect(
+    () => () => {
+      scanEpoch += 1;
+      if (useAppStore.getState().job.status === 'running') {
+        useAppStore.getState().setJob({ status: 'cancelled', note: '중단됨' });
+      }
+    },
+    [],
+  );
+
+  const scanPages = inventory.filter((p) => p.included && p.status === 'ok').map((p) => p.url);
+  const current = Math.max(0, job.progressPage);
+  const ruleTotal = Math.max(job.progressRuleTotal, 1);
+  const ruleIdx = Math.max(0, job.progressRule);
+  if (pctFloorJobId.current !== job.id) {
+    pctFloorJobId.current = job.id;
+    pctFloors.current = {};
+  }
+  const rows = scanPages.map((url, i) => {
+    const n = i + 1;
+    let raw = 0;
+    if (current > 0) {
+      if (n < current) raw = 100;
+      else if (n === current) raw = Math.min(100, Math.round((ruleIdx / ruleTotal) * 100));
+    }
+    const prev = pctFloors.current[url] ?? 0;
+    const pct = Math.max(prev, raw);
+    pctFloors.current[url] = pct;
+    return { key: url, pct };
+  });
+  const { bottomRef, showTop } = useOverflowAction([rows.length]);
 
   return (
     <div className="app-shell">
+      <ScrollTopButton show={showTop} />
       <StepHeader
         active={4}
         onPrev={() => {
@@ -132,9 +172,14 @@ export default function ScanningPage() {
       />
       <ProgressPanel
         title="검사하고 있어요"
-        note="잠시만 기다려 주세요. 끝나는 대로 결과 화면으로 이동합니다."
-        pct={pct}
+        note={
+          job.currentUrl
+            ? `${job.currentUrl} · 잠시만 기다려 주세요. 끝나는 대로 결과 화면으로 이동합니다.`
+            : '잠시만 기다려 주세요. 끝나는 대로 결과 화면으로 이동합니다.'
+        }
+        rows={rows}
       />
+      <div ref={bottomRef} />
     </div>
   );
 }

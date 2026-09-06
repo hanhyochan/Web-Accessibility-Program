@@ -62,8 +62,21 @@ function suggestFixedHtml(ruleId: string, html: string): string {
     return h;
   }
   if (ruleId === 'ko-blank-link-title') {
-    if (/\stitle\s*=/i.test(h)) return h.replace(/\stitle\s*=\s*["'][^"']*["']/, ' title="새창열림"');
-    return h.replace(/<a\b/i, '<a title="새창열림"');
+    let out = h;
+    if (/<img\b/i.test(out)) {
+      if (/\salt\s*=\s*["']\s*["']/.test(out)) {
+        out = out.replace(/\salt\s*=\s*["']\s*["']/, ' alt="대체 텍스트"');
+      } else if (!/\salt\s*=/i.test(out)) {
+        out = out.replace(/<img\b/i, '<img alt="대체 텍스트"');
+      }
+    }
+    if (/새\s*창|새창열림/.test(out) && /<span[^>]*\bclass=["'][^"']*\bblind\b/i.test(out)) {
+      return out;
+    }
+    const span =
+      '<span class="blind" style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0">새창열림</span>';
+    if (/<\/a>/i.test(out)) return out.replace(/<\/a>/i, `${span}</a>`);
+    return `${out}${span}`;
   }
   if (ruleId === 'link-name') {
     if (/\saria-label\s*=/i.test(h)) return h;
@@ -130,9 +143,11 @@ function hasTargetBlank(html: string) {
 }
 
 function snippetHasNewWindowHint(html: string) {
-  const title = html.match(/\btitle\s*=\s*["']([^"']*)["']/i)?.[1] || '';
   const aria = html.match(/\baria-label\s*=\s*["']([^"']*)["']/i)?.[1] || '';
-  return /새\s*창|새창열림/.test(title) || /새\s*창|새창열림/.test(aria);
+  if (/새\s*창|새창열림/.test(aria)) return true;
+  return /<span[^>]*\bclass=["'][^"']*\b(?:blind|sr-only|visually-hidden|a11y-hidden)\b[^>]*>[\s\S]*(?:새\s*창|새창열림)/i.test(
+    html,
+  );
 }
 
 /** axe가 잡은 target=_blank 링크에 새창 안내 오류가 빠지지 않게 보완 */
@@ -157,7 +172,7 @@ function ensureBlankLinkFindings(url: string, findings: Finding[]): Finding[] {
       selector: f.selector || 'a[target="_blank"]',
       locationLabel: f.locationLabel,
       message:
-        'target="_blank" 링크에 새 창 열림 안내(title·aria-label·숨김 텍스트)가 없습니다',
+        'target="_blank" 링크에 새 창 열림 안내(숨김 텍스트)가 없습니다',
       impact: 'serious',
       htmlSnippet: html,
       fixedSnippet: suggestFixedHtml('ko-blank-link-title', html),
@@ -325,9 +340,8 @@ async function runCustomRule(
       };
 
       const hasNewWindowHint = (a: Element) => {
-        const title = a.getAttribute('title') || '';
         const aria = a.getAttribute('aria-label') || '';
-        if (NEW_WINDOW_HINT.test(title) || NEW_WINDOW_HINT.test(aria)) return true;
+        if (NEW_WINDOW_HINT.test(aria)) return true;
         for (const child of Array.from(a.querySelectorAll('*'))) {
           const text = (child.textContent || '').replace(/\s+/g, ' ').trim();
           if (!NEW_WINDOW_HINT.test(text)) continue;
@@ -373,7 +387,7 @@ async function runCustomRule(
           selector: 'a[target="_blank"]',
           locationLabel: n.locationLabel,
           message:
-            'target="_blank" 링크에 새 창 열림 안내(title·aria-label·숨김 텍스트)가 없습니다',
+            'target="_blank" 링크에 새 창 열림 안내(숨김 텍스트)가 없습니다',
           impact: 'serious',
           htmlSnippet: html,
           fixedSnippet: suggestFixedHtml(ruleId, html),
@@ -442,8 +456,7 @@ async function collectAxeFindings(
 }
 
 async function openPage(page: import('playwright').Page, url: string) {
-  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
-  await page.waitForLoadState('load', { timeout: 15000 }).catch(() => undefined);
+  await page.goto(url, { waitUntil: 'load', timeout: 120000 });
   await new Promise((r) => setTimeout(r, 400));
 }
 
@@ -548,7 +561,7 @@ export async function runRulesOnPages(options: {
       userAgent:
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
     });
-    context.setDefaultNavigationTimeout(45000);
+    context.setDefaultNavigationTimeout(120000);
     const page = await context.newPage();
 
     for (let pi = 0; pi < pages.length; pi++) {

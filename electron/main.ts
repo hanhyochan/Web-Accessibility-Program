@@ -4,6 +4,7 @@ import path from 'node:path';
 import { crawlSite } from './scan/crawl';
 import { scanSourceFolder } from './scan/folderScan';
 import { runRuleOnPages, runRulesOnPages } from './scan/axeScan';
+import { zipStore } from './zipStore';
 
 process.env.DIST = path.join(__dirname, '../dist');
 process.env.VITE_PUBLIC = app.isPackaged
@@ -108,12 +109,12 @@ app.whenReady().then(() => {
   });
 
   ipcMain.handle(
-    'export:pdf',
+    'export:files',
     async (
       _event,
       payload: {
         projectName: string;
-        fileName: string;
+        baseName: string;
         findings: Array<{
           message: string;
           impact: string;
@@ -122,40 +123,73 @@ app.whenReady().then(() => {
           htmlSnippet: string;
         }>;
         exportedAt: string;
+        json?: string;
+        md?: string;
+        pdf?: boolean;
       },
     ) => {
+      const planned: { name: string; ext: string }[] = [];
+      if (payload.pdf) planned.push({ name: `${payload.baseName}-report.pdf`, ext: 'pdf' });
+      if (payload.json != null) planned.push({ name: `${payload.baseName}-report.json`, ext: 'json' });
+      if (payload.md != null) planned.push({ name: `${payload.baseName}-ai-fix.md`, ext: 'md' });
+      if (planned.length === 0) return { ok: false, error: '받을 파일이 없습니다.' };
+
+      const multi = planned.length > 1;
       const save = await dialog.showSaveDialog({
-        title: 'PDF 저장',
-        defaultPath: payload.fileName,
-        filters: [{ name: 'PDF', extensions: ['pdf'] }],
+        title: '파일 저장',
+        defaultPath: multi ? `${payload.baseName}.zip` : planned[0].name,
+        filters: multi
+          ? [{ name: 'ZIP', extensions: ['zip'] }]
+          : [{ name: planned[0].ext.toUpperCase(), extensions: [planned[0].ext] }],
       });
       if (save.canceled || !save.filePath) {
         return { ok: false, canceled: true };
       }
 
-      const html = buildReportHtml(payload);
-      const pdfWin = new BrowserWindow({
-        show: false,
-        width: 800,
-        height: 1100,
-        webPreferences: { sandbox: true },
-      });
       try {
-        await pdfWin.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
-        const pdf = await pdfWin.webContents.printToPDF({
-          printBackground: true,
-          pageSize: 'A4',
-          margins: { marginType: 'default' },
-        });
-        fs.writeFileSync(save.filePath, pdf);
+        const files: { name: string; data: Buffer }[] = [];
+        if (payload.pdf) {
+          const html = buildReportHtml(payload);
+          const pdfWin = new BrowserWindow({
+            show: false,
+            width: 800,
+            height: 1100,
+            webPreferences: { sandbox: true },
+          });
+          try {
+            await pdfWin.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+            files.push({
+              name: `${payload.baseName}-report.pdf`,
+              data: await pdfWin.webContents.printToPDF({
+                printBackground: true,
+                pageSize: 'A4',
+                margins: { marginType: 'default' },
+              }),
+            });
+          } finally {
+            pdfWin.destroy();
+          }
+        }
+        if (payload.json != null) {
+          files.push({
+            name: `${payload.baseName}-report.json`,
+            data: Buffer.from(payload.json, 'utf8'),
+          });
+        }
+        if (payload.md != null) {
+          files.push({
+            name: `${payload.baseName}-ai-fix.md`,
+            data: Buffer.from(payload.md, 'utf8'),
+          });
+        }
+        const out = multi ? zipStore(files) : files[0].data;
+        fs.writeFileSync(save.filePath, out);
         return { ok: true, path: save.filePath };
       } catch (err) {
         return {
           ok: false,
           error: err instanceof Error ? err.message : String(err),
         };
-      } finally {
-        pdfWin.destroy();
       }
     },
   );

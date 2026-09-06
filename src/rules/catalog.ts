@@ -373,7 +373,7 @@ export const RULE_CATALOG: RuleDef[] = [
     enabled: true,
     autoFixable: true,
     description:
-      'target=_blank면 title·aria-label·숨김 텍스트 중 하나로 새창열림 안내 (WA 26 보조)',
+      'target=_blank면 숨김 텍스트(blind)로 새창열림 안내. 이미지 alt는 링크 목적을 유지 (WA 26 보조)',
   },
   {
     id: 'ko-linked-img-empty-alt',

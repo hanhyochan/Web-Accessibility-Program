@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PageIntro from '../components/PageIntro';
+import ScrollTopButton from '../components/ScrollTopButton';
 import SelectAllRow from '../components/SelectAllRow';
 import StatDash from '../components/StatDash';
 import StepHeader from '../components/StepHeader';
@@ -191,7 +192,7 @@ const COPY: Record<string, { title: string; desc: string }> = {
   },
   'ko-blank-link-title': {
     title: '새 창 열림 안내',
-    desc: 'target=_blank → title·aria-label·숨김 텍스트로 새창열림 · 커스텀 자동',
+    desc: 'target=_blank → 이미지 alt는 링크 목적 유지, 숨김 텍스트로 새창열림 · 커스텀 자동',
   },
   'ko-linked-img-empty-alt': {
     title: '컨트롤 이미지 대체 텍스트',
@@ -246,6 +247,8 @@ export default function RulesPage() {
   const a11yRules = packRules(rules, 'wa-a11y').filter((r) => !GUIDE_ONLY_RULE_IDS.has(r.id));
   const compatRules = packRules(rules, 'wa-compat').filter((r) => !GUIDE_ONLY_RULE_IDS.has(r.id));
   const guideOnlyRules = rules.filter((r) => GUIDE_ONLY_RULE_IDS.has(r.id));
+  const a11yGuides = guideOnlyRules.filter((r) => r.pack === 'wa-a11y');
+  const compatGuides = guideOnlyRules.filter((r) => r.pack === 'wa-compat');
   const a11yEnabled = a11yRules.filter((r) => r.enabled).length;
   const compatEnabled = compatRules.filter((r) => r.enabled).length;
   const a11yAll = a11yRules.length > 0 && a11yEnabled === a11yRules.length;
@@ -255,6 +258,7 @@ export default function RulesPage() {
     compatRules.length,
     guideOnlyRules.length,
     enabled,
+    openManualId,
   ]);
   useIndeterminate(a11ySelectAllRef, a11yEnabled, a11yRules.length);
   useIndeterminate(compatSelectAllRef, compatEnabled, compatRules.length);
@@ -277,8 +281,61 @@ export default function RulesPage() {
     );
   };
 
+  const renderGuide = (r: RuleDef) => {
+    const open = openManualId === r.id;
+    const guide = MANUAL_GUIDES[r.id];
+    const title = ruleTitle(r);
+    return (
+      <div
+        key={r.id}
+        className={`manual-acc-card${open ? ' is-open' : ''}`}
+      >
+        <button
+          type="button"
+          className="manual-acc-head"
+          aria-expanded={open}
+          onClick={() => setOpenManualId(open ? null : r.id)}
+        >
+          <span className="list-primary manual-acc-title">{title}</span>
+          <span className="manual-acc-arrow" aria-hidden>
+            <AccordionChevron open={open} />
+          </span>
+        </button>
+        {open && guide ? (
+          <div className="manual-acc-body stack">
+            <div className="result-finding-meta">
+              <strong>확인 방법</strong>
+              <ul className="manual-acc-bullets">
+                {guide.check.map((line) => (
+                  <li key={line}>{line}</li>
+                ))}
+              </ul>
+            </div>
+            {guide.fixes.map((fix) => (
+              <div key={fix.label} className="result-finding-meta">
+                <strong>{fix.label}</strong>
+                {fix.text ? (
+                  <p className="manual-acc-text">{fix.text}</p>
+                ) : null}
+                {fix.code ? (
+                  <div className="result-error-pill result-code-box result-code-fix">
+                    {fix.code}
+                  </div>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        ) : open ? (
+          <div className="manual-acc-body">
+            <p className="muted">가이드 내용이 아직 없습니다.</p>
+          </div>
+        ) : null}
+      </div>
+    );
+  };
+
   const startScan = () => navigate('/scanning');
-  const canStart = enabled > 0 && pages > 0;
+  const canStart = pages > 0 && rules.some((r) => r.enabled);
   const primary = (
     <button className="btn primary" type="button" disabled={!canStart} onClick={startScan}>
       검사 시작
@@ -287,6 +344,7 @@ export default function RulesPage() {
 
   return (
     <div className="app-shell">
+      <ScrollTopButton show={showTop} />
       <StepHeader
         active={3}
         onPrev={() => navigate('/inventory')}
@@ -344,60 +402,19 @@ export default function RulesPage() {
               프로그램이 위반을 자동으로 확정하기 어려운 항목입니다. 펼쳐 확인 방법과 수정·해결
               방안을 보세요. (자동 스캔 오류로는 잡히지 않습니다)
             </p>
-            <div className="stack manual-acc-list">
-              {guideOnlyRules.map((r) => {
-                const open = openManualId === r.id;
-                const guide = MANUAL_GUIDES[r.id];
-                const title = ruleTitle(r);
-                return (
-                  <div
-                    key={r.id}
-                    className={`manual-acc-card${open ? ' is-open' : ''}`}
-                  >
-                    <button
-                      type="button"
-                      className="manual-acc-head"
-                      aria-expanded={open}
-                      onClick={() => setOpenManualId(open ? null : r.id)}
-                    >
-                      <span className="list-primary manual-acc-title">{title}</span>
-                      <span className="manual-acc-arrow" aria-hidden>
-                        <AccordionChevron open={open} />
-                      </span>
-                    </button>
-                    {open && guide ? (
-                      <div className="manual-acc-body stack">
-                        <div className="result-finding-meta">
-                          <strong>확인 방법</strong>
-                          <ul className="manual-acc-bullets">
-                            {guide.check.map((line) => (
-                              <li key={line}>{line}</li>
-                            ))}
-                          </ul>
-                        </div>
-                        {guide.fixes.map((fix) => (
-                          <div key={fix.label} className="result-finding-meta">
-                            <strong>{fix.label}</strong>
-                            {fix.text ? (
-                              <p className="manual-acc-text">{fix.text}</p>
-                            ) : null}
-                            {fix.code ? (
-                              <div className="result-error-pill result-code-box result-code-fix">
-                                {fix.code}
-                              </div>
-                            ) : null}
-                          </div>
-                        ))}
-                      </div>
-                    ) : open ? (
-                      <div className="manual-acc-body">
-                        <p className="muted">가이드 내용이 아직 없습니다.</p>
-                      </div>
-                    ) : null}
-                  </div>
-                );
-              })}
-            </div>
+            {(
+              [
+                { title: '웹접근성', list: a11yGuides },
+                { title: '웹호환성', list: compatGuides },
+              ] as const
+            ).map((group) =>
+              group.list.length === 0 ? null : (
+                <div key={group.title} className="stack">
+                  <div className="section-title">{group.title}</div>
+                  <div className="stack manual-acc-list">{group.list.map(renderGuide)}</div>
+                </div>
+              ),
+            )}
           </div>
         ) : null}
 

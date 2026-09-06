@@ -78,7 +78,12 @@ declare global {
         excludePatterns?: string;
       }) => Promise<{ pages: InventoryPage[]; note: string; error?: boolean }>;
       onCrawlProgress?: (
-        cb: (progress: { found: number; maxPages: number; currentUrl: string }) => void,
+        cb: (progress: {
+          found: number;
+          maxPages: number;
+          currentUrl: string;
+          pages: { url: string; pct: number }[];
+        }) => void,
       ) => () => void;
       runRule: (payload: {
         ruleId: string;
@@ -98,11 +103,14 @@ declare global {
           currentUrl: string;
         }) => void,
       ) => () => void;
-      exportPdf?: (payload: {
+      exportFiles?: (payload: {
         projectName: string;
-        fileName: string;
+        baseName: string;
         findings: Finding[];
         exportedAt: string;
+        json?: string;
+        md?: string;
+        pdf?: boolean;
       }) => Promise<{ ok: boolean; canceled?: boolean; path?: string; error?: string }>;
     };
   }

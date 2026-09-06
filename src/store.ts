@@ -7,6 +7,7 @@ type AppState = {
   rules: RuleDef[];
   inventory: InventoryPage[];
   job: ScanJob;
+  completedManualRuleIds: string[];
 
   createProject: (input: Omit<Project, 'id' | 'createdAt'>) => void;
   toggleRule: (id: string) => void;
@@ -17,6 +18,7 @@ type AppState = {
   setJob: (job: Partial<ScanJob>) => void;
   appendFindings: (findings: Finding[]) => void;
   resetScan: () => void;
+  completeManualCheck: (id: string) => void;
 };
 
 const idleJob = (): ScanJob => ({
@@ -34,6 +36,7 @@ export const useAppStore = create<AppState>((set) => ({
   rules: RULE_CATALOG.map((r) => ({ ...r })),
   inventory: [],
   job: idleJob(),
+  completedManualRuleIds: [],
 
   createProject: (input) =>
     set({
@@ -46,6 +49,7 @@ export const useAppStore = create<AppState>((set) => ({
       inventory: [],
       job: idleJob(),
       rules: RULE_CATALOG.map((r) => ({ ...r })),
+      completedManualRuleIds: [],
     }),
 
   toggleRule: (id) =>
@@ -92,5 +96,12 @@ export const useAppStore = create<AppState>((set) => ({
   appendFindings: (findings) =>
     set((s) => ({ job: { ...s.job, findings: [...s.job.findings, ...findings] } })),
 
-  resetScan: () => set({ job: idleJob() }),
+  resetScan: () => set({ job: idleJob(), completedManualRuleIds: [] }),
+
+  completeManualCheck: (id) =>
+    set((s) =>
+      s.completedManualRuleIds.includes(id)
+        ? s
+        : { completedManualRuleIds: [...s.completedManualRuleIds, id] },
+    ),
 }));

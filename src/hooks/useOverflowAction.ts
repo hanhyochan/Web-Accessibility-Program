@@ -17,6 +17,7 @@ export function useOverflowAction(deps: unknown[] = []) {
     check();
     const ro = new ResizeObserver(check);
     ro.observe(el);
+    ro.observe(document.documentElement);
     window.addEventListener('resize', check);
     return () => {
       ro.disconnect();

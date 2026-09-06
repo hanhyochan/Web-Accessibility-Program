@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { useEffect, type ReactNode } from 'react';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { useAppStore } from './store';
 import NewProjectPage from './pages/NewProjectPage';
 import InventoryPage from './pages/InventoryPage';
@@ -9,6 +9,14 @@ import ResultsPage from './pages/ResultsPage';
 import PageFindingsPage from './pages/PageFindingsPage';
 import ExportPage from './pages/ExportPage';
 
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+  return null;
+}
+
 function NeedProject({ children }: { children: ReactNode }) {
   const project = useAppStore((s) => s.project);
   if (!project) return <Navigate to="/" replace />;
@@ -17,7 +25,9 @@ function NeedProject({ children }: { children: ReactNode }) {
 
 export default function App() {
   return (
-    <Routes>
+    <>
+      <ScrollToTop />
+      <Routes>
       <Route path="/" element={<NewProjectPage />} />
       <Route path="/project/new" element={<Navigate to="/" replace />} />
       <Route
@@ -72,5 +82,6 @@ export default function App() {
       />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </>
   );
 }

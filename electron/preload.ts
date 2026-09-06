@@ -39,11 +39,21 @@ const api = {
   }): Promise<{ pages: CrawlPage[]; note: string; error?: boolean }> =>
     ipcRenderer.invoke('scan:folder', payload),
   onCrawlProgress: (
-    cb: (progress: { found: number; maxPages: number; currentUrl: string }) => void,
+    cb: (progress: {
+      found: number;
+      maxPages: number;
+      currentUrl: string;
+      pages: { url: string; pct: number }[];
+    }) => void,
   ): (() => void) => {
     const listener = (
       _event: unknown,
-      progress: { found: number; maxPages: number; currentUrl: string },
+      progress: {
+        found: number;
+        maxPages: number;
+        currentUrl: string;
+        pages: { url: string; pct: number }[];
+      },
     ) => cb(progress);
     ipcRenderer.on('scan:crawl-progress', listener);
     return () => ipcRenderer.removeListener('scan:crawl-progress', listener);
@@ -82,13 +92,16 @@ const api = {
     ipcRenderer.on('scan:run-progress', listener);
     return () => ipcRenderer.removeListener('scan:run-progress', listener);
   },
-  exportPdf: (payload: {
+  exportFiles: (payload: {
     projectName: string;
-    fileName: string;
+    baseName: string;
     findings: Finding[];
     exportedAt: string;
+    json?: string;
+    md?: string;
+    pdf?: boolean;
   }): Promise<{ ok: boolean; canceled?: boolean; path?: string; error?: string }> =>
-    ipcRenderer.invoke('export:pdf', payload),
+    ipcRenderer.invoke('export:files', payload),
 };
 
 contextBridge.exposeInMainWorld('a11y', api);

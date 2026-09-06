@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import CheckboxStackRow from '../components/CheckboxStackRow';
 import PageIntro from '../components/PageIntro';
+import ScrollTopButton from '../components/ScrollTopButton';
 import StepHeader from '../components/StepHeader';
 import { buildAiFixMarkdown, downloadTextFile } from '../exportAiFixMd';
 import { useOverflowAction } from '../hooks/useOverflowAction';
@@ -13,10 +14,13 @@ export default function ExportPage() {
   const job = useAppStore((s) => s.job);
   const [formats, setFormats] = useState({ pdf: true, json: true, md: true });
   const [busy, setBusy] = useState(false);
-  const { bottomRef, showTop } = useOverflowAction([]);
+  const [saved, setSaved] = useState(false);
+  const { bottomRef, showTop } = useOverflowAction([busy, saved]);
 
-  const toggle = (key: keyof typeof formats) =>
+  const toggle = (key: keyof typeof formats) => {
+    setSaved(false);
     setFormats((f) => ({ ...f, [key]: !f[key] }));
+  };
 
   const exportNow = async () => {
     if (!formats.pdf && !formats.json && !formats.md) {
@@ -24,14 +28,13 @@ export default function ExportPage() {
       return;
     }
 
-    const baseName = project.name || 'a11y';
+    const baseName = (project.name || 'a11y').replace(/[\\/:*?"<>|]+/g, '_').trim() || 'a11y';
     const exportedAt = new Date().toISOString();
+    setSaved(false);
     setBusy(true);
     try {
-      if (formats.json) {
-        downloadTextFile(
-          `${baseName}-report.json`,
-          JSON.stringify(
+      const json = formats.json
+        ? JSON.stringify(
             {
               project: project.name,
               findings: job.findings,
@@ -39,37 +42,44 @@ export default function ExportPage() {
             },
             null,
             2,
-          ),
-          'application/json',
-        );
-      }
+          )
+        : undefined;
+      const md = formats.md
+        ? buildAiFixMarkdown({
+            projectName: project.name,
+            startUrl: project.startUrl,
+            exportedAt,
+            findings: job.findings,
+          })
+        : undefined;
+      const selected = [formats.pdf, formats.json, formats.md].filter(Boolean).length;
 
-      if (formats.md) {
-        const md = buildAiFixMarkdown({
-          projectName: project.name,
-          startUrl: project.startUrl,
-          exportedAt,
-          findings: job.findings,
-        });
-        downloadTextFile(`${baseName}-ai-fix.md`, md, 'text/markdown;charset=utf-8');
-      }
-
-      if (formats.pdf) {
-        if (!window.a11y?.exportPdf) {
-          alert('PDF 저장은 Electron 앱에서만 가능합니다.');
+      if (!window.a11y?.exportFiles) {
+        if (selected > 1 || formats.pdf) {
+          alert('파일 저장은 Electron 앱에서만 가능합니다.');
           return;
         }
-        const result = await window.a11y.exportPdf({
-          projectName: project.name,
-          fileName: `${baseName}-report.pdf`,
-          findings: job.findings,
-          exportedAt,
-        });
-        if (result.canceled) return;
-        if (!result.ok) {
-          alert(`PDF 저장 실패: ${result.error || '알 수 없는 오류'}`);
-        }
+        if (json) downloadTextFile(`${baseName}-report.json`, json, 'application/json');
+        if (md) downloadTextFile(`${baseName}-ai-fix.md`, md, 'text/markdown;charset=utf-8');
+        setSaved(true);
+        return;
       }
+
+      const result = await window.a11y.exportFiles({
+        projectName: project.name,
+        baseName,
+        findings: job.findings,
+        exportedAt,
+        json,
+        md,
+        pdf: formats.pdf,
+      });
+      if (result.canceled) return;
+      if (!result.ok) {
+        alert(`저장 실패: ${result.error || '알 수 없는 오류'}`);
+        return;
+      }
+      setSaved(true);
     } finally {
       setBusy(false);
     }
@@ -93,11 +103,16 @@ export default function ExportPage() {
 
   return (
     <div className="app-shell">
+      <ScrollTopButton show={showTop} />
       <StepHeader active={5} onPrev={() => navigate('/results')} />
       <main className="content mid stack lg">
         <PageIntro
-          title="보고서를 받아요"
-          description="원하는 형식만 고른 뒤 받아 가세요."
+          title="파일을 받아요"
+          description={
+            saved
+              ? '저장했습니다.'
+              : '원하는 형식만 고른 뒤 받아 가세요. 두 가지 이상이면 한 파일로 묶입니다.'
+          }
           topAction={showTop ? primary : undefined}
         />
         <div className="list">
@@ -107,6 +122,7 @@ export default function ExportPage() {
               title={opt.title}
               desc={opt.desc}
               checked={formats[opt.key]}
+              disabled={busy}
               onChange={() => toggle(opt.key)}
             />
           ))}

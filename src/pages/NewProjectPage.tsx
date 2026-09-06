@@ -25,10 +25,23 @@ export default function NewProjectPage() {
       alert('검사할 사이트 주소를 입력하세요.');
       return;
     }
+    const raw = startUrl.trim();
+    const withProto = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+    try {
+      const parsed = new URL(withProto);
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+        alert('올바른 사이트 주소를 입력하세요.');
+        return;
+      }
+    } catch {
+      alert('올바른 사이트 주소를 입력하세요.');
+      return;
+    }
+    const url = withProto;
     createProject({
       name: name.trim(),
       mode: 'production',
-      startUrl: startUrl.trim(),
+      startUrl: url,
       scanScope,
       maxDepth: scanScope === 'single' ? 0 : 3,
       maxPages: 100,
@@ -63,6 +76,8 @@ export default function NewProjectPage() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="예: 우리 회사 홈페이지"
+                autoComplete="off"
+                spellCheck={false}
               />
             </div>
           </div>
@@ -74,6 +89,9 @@ export default function NewProjectPage() {
                 value={startUrl}
                 onChange={(e) => setStartUrl(e.target.value)}
                 placeholder="예: https://example.com"
+                autoComplete="url"
+                spellCheck={false}
+                inputMode="url"
               />
             </div>
           </div>

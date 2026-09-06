@@ -1,5 +1,6 @@
 import { useNavigate, useParams } from 'react-router-dom';
 import PageIntro from '../components/PageIntro';
+import ScrollTopButton from '../components/ScrollTopButton';
 import StepHeader from '../components/StepHeader';
 import {
   alternativeFixes,
@@ -15,6 +16,7 @@ import {
   worstImpact,
 } from '../findingsUi';
 import { formatCountUnit } from '../format';
+import { useOverflowAction } from '../hooks/useOverflowAction';
 import { useAppStore } from '../store';
 
 export default function PageFindingsPage() {
@@ -24,13 +26,16 @@ export default function PageFindingsPage() {
   const url = pageKey ? decodeURIComponent(pageKey) : '';
   const findings = allFindings.filter((f) => f.url === url);
   const groups = groupFindingsByObject(findings);
+  const { bottomRef, showTop } = useOverflowAction([url, findings.length, groups.length]);
 
   if (!url || findings.length === 0) {
     return (
       <div className="app-shell">
+        <ScrollTopButton show={showTop} />
         <StepHeader active={5} onPrev={() => navigate('/results')} />
         <main className="content">
-          <p>이 페이지의 검사 항목을 찾을 수 없습니다.</p>
+          <p className="muted">이 페이지의 검사 항목을 찾을 수 없습니다.</p>
+          <div ref={bottomRef} />
         </main>
       </div>
     );
@@ -38,6 +43,7 @@ export default function PageFindingsPage() {
 
   return (
     <div className="app-shell">
+      <ScrollTopButton show={showTop} />
       <StepHeader active={5} onPrev={() => navigate('/results')} />
       <main className="content stack lg">
         <PageIntro
@@ -118,6 +124,7 @@ export default function PageFindingsPage() {
             );
           })}
         </div>
+        <div ref={bottomRef} />
       </main>
     </div>
   );

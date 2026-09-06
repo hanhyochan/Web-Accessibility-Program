@@ -13,6 +13,7 @@ export type CrawlProgress = {
   found: number;
   maxPages: number;
   currentUrl: string;
+  pages: { url: string; pct: number }[];
 };
 
 function normalizeUrl(raw: string, base: string): string | null {
@@ -56,7 +57,13 @@ export async function crawlSite(options: {
     .filter(Boolean);
 
   const browser = await launchBrowser();
-  const context = await browser.newContext();
+  const context = await browser.newContext({
+    ignoreHTTPSErrors: true,
+    locale: 'ko-KR',
+    userAgent:
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+  });
+  context.setDefaultNavigationTimeout(90000);
   const page = await context.newPage();
 
   const visited = new Set<string>();
@@ -65,11 +72,30 @@ export async function crawlSite(options: {
     { url: start, depth: 0, from: '(시작)' },
   ];
 
-  const report = (currentUrl: string) => {
+  const report = (currentUrl: string, currentPct = 0) => {
+    const pages: { url: string; pct: number }[] = [];
+    const seen = new Set<string>();
+    for (const p of results) {
+      pages.push({ url: p.url, pct: 100 });
+      seen.add(p.url);
+    }
+    if (!seen.has(currentUrl)) {
+      pages.push({
+        url: currentUrl,
+        pct: Math.max(0, Math.min(100, currentPct)),
+      });
+      seen.add(currentUrl);
+    }
+    for (const q of queue) {
+      if (seen.has(q.url)) continue;
+      pages.push({ url: q.url, pct: 0 });
+      seen.add(q.url);
+    }
     options.onProgress?.({
       found: results.length,
       maxPages: options.maxPages,
       currentUrl,
+      pages,
     });
   };
 
@@ -108,8 +134,8 @@ export async function crawlSite(options: {
 
       try {
         const res = await page.goto(cur.url, {
-          waitUntil: 'domcontentloaded',
-          timeout: 20000,
+          waitUntil: 'commit',
+          timeout: 90000,
         });
         const status = res?.status() ?? 0;
         const ok = !!res && status > 0 && status < 400;
@@ -132,22 +158,36 @@ export async function crawlSite(options: {
 
         if (!ok || cur.depth >= options.maxDepth) continue;
 
-        const hrefs = await page.$$eval('a[href]', (as) =>
-          as.map((a) => (a as HTMLAnchorElement).getAttribute('href') || ''),
-        );
+        try {
+          await page.waitForLoadState('domcontentloaded', { timeout: 15000 }).catch(() => undefined);
+          const hrefs = await page.$$eval('a[href]', (as) =>
+            as.map((a) => (a as HTMLAnchorElement).getAttribute('href') || ''),
+          );
+          const base = page.url() || cur.url;
+          let pageHost = startHost;
+          try {
+            pageHost = new URL(base).host;
+          } catch {
+            pageHost = startHost;
+          }
 
-        for (const href of hrefs) {
-          const next = normalizeUrl(href, cur.url);
-          if (!next) continue;
-          if (new URL(next).host !== startHost) continue;
-          if (visited.has(next)) continue;
-          if (queue.some((q) => q.url === next)) continue;
-          if (results.length + queue.length >= options.maxPages) break;
-          queue.push({
-            url: next,
-            depth: cur.depth + 1,
-            from: new URL(cur.url).pathname || '/',
-          });
+          for (const href of hrefs) {
+            const next = normalizeUrl(href, base);
+            if (!next) continue;
+            const host = new URL(next).host;
+            if (host !== startHost && host !== pageHost) continue;
+            if (visited.has(next)) continue;
+            if (queue.some((q) => q.url === next)) continue;
+            if (results.length + queue.length >= options.maxPages) break;
+            queue.push({
+              url: next,
+              depth: cur.depth + 1,
+              from: new URL(cur.url).pathname || '/',
+            });
+          }
+          report(cur.url);
+        } catch {
+          // 커밋 후 DOM이 덜 준비되면 링크만 포기. 이 장은 유지.
         }
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);

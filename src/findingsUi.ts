@@ -20,11 +20,7 @@ export const GUIDE_ONLY_RULE_IDS = new Set([
   'wa-31-redundant-entry',
   'wa-33-webapp',
   'html-validate-recommended',
-  'compat-html',
-  'compat-css',
-  'compat-utf8',
   'compat-js',
-  'compat-plugin',
   'compat-func',
   'compat-display',
   'compat-m-func',
@@ -247,22 +243,20 @@ function withInputAriaLabel(html: string) {
   return h;
 }
 
-function withAriaNewWindowHint(html: string): string {
-  if (/aria-label\s*=/i.test(html)) {
-    return html.replace(/aria-label\s*=\s*(["'])([^"']*)\1/i, (full, q, v) => {
-      if (/새\s*창|새창열림/.test(v)) return full;
-      return `aria-label=${q}${v} (새창열림)${q}`;
-    });
-  }
-  return html.replace(/<a\b/i, '<a aria-label="새창열림"');
-}
-
 function withHiddenNewWindowText(html: string): string {
+  let h = html || '';
+  if (/<img\b/i.test(h)) {
+    if (/\salt\s*=\s*["']\s*["']/.test(h)) {
+      h = h.replace(/\salt\s*=\s*["']\s*["']/, ' alt="대체 텍스트"');
+    } else if (!/\salt\s*=/i.test(h)) {
+      h = h.replace(/<img\b/i, '<img alt="대체 텍스트"');
+    }
+  }
+  if (/새\s*창|새창열림/.test(h) && /<span[^>]*\bclass=["'][^"']*\bblind\b/i.test(h)) return h;
   const span =
-    '<span class="blind" style="position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0,0,0,0)">새창열림</span>';
-  if (/새\s*창|새창열림/.test(html) && /blind|position\s*:\s*absolute/i.test(html)) return html;
-  if (/<\/a>/i.test(html)) return html.replace(/<\/a>/i, `${span}</a>`);
-  return `${html}${span}`;
+    '<span class="blind" style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0">새창열림</span>';
+  if (/<\/a>/i.test(h)) return h.replace(/<\/a>/i, `${span}</a>`);
+  return `${h}${span}`;
 }
 
 function withControlImgAlt(html: string): string {
@@ -270,18 +264,6 @@ function withControlImgAlt(html: string): string {
   if (/\salt\s*=\s*["']\s*["']/.test(h)) return h.replace(/\salt\s*=\s*["']\s*["']/, ' alt="대체 텍스트"');
   if (/<img\b/i.test(h) && !/\salt\s*=/i.test(h)) return h.replace(/<img\b/i, '<img alt="대체 텍스트"');
   return h;
-}
-
-function withControlBlindText(html: string): string {
-  const h = html || '';
-  const withEmptyAlt = h.replace(/<img\b([^>]*)>/i, (_m, attrs: string) => {
-    if (/\salt\s*=/i.test(attrs)) return `<img${attrs.replace(/\salt\s*=\s*["'][^"']*["']/, ' alt=""')}>`;
-    return `<img alt=""${attrs}>`;
-  });
-  const blind = '<span class="blind">대체 텍스트</span>';
-  if (/<\/a>/i.test(withEmptyAlt)) return withEmptyAlt.replace(/<\/a>/i, `${blind}</a>`);
-  if (/<\/button>/i.test(withEmptyAlt)) return withEmptyAlt.replace(/<\/button>/i, `${blind}</button>`);
-  return `${withEmptyAlt}${blind}`;
 }
 
 export function suggestFixedHtml(ruleId: string, html: string): string {
@@ -293,10 +275,7 @@ export function suggestFixedHtml(ruleId: string, html: string): string {
     return h;
   }
   if (ruleId === 'ko-linked-img-empty-alt') return withControlImgAlt(h);
-  if (ruleId === 'ko-blank-link-title') {
-    if (/\stitle\s*=/i.test(h)) return h.replace(/\stitle\s*=\s*["'][^"']*["']/, ' title="새창열림"');
-    return h.replace(/<a\b/i, '<a title="새창열림"');
-  }
+  if (ruleId === 'ko-blank-link-title') return withHiddenNewWindowText(h);
   if (ruleId === 'link-name') {
     if (/\saria-label\s*=/i.test(h)) return h;
     return h.replace(/<a\b/i, '<a aria-label="링크 목적"');
@@ -355,18 +334,8 @@ export type AlternativeFix = { label: string; code: string };
 
 export function alternativeFixes(ruleIds: string[], html: string): AlternativeFix[] {
   const out: AlternativeFix[] = [];
-  if (ruleIds.includes('ko-blank-link-title')) {
-    out.push({ label: 'aria-label에 새창 안내 넣기', code: withAriaNewWindowHint(html) });
-    out.push({ label: '화면에서 숨긴 안내 문구 넣기', code: withHiddenNewWindowText(html) });
-  }
   if (ruleIds.includes('label')) {
     out.push({ label: 'aria-label로 입력칸 이름 넣기', code: withInputAriaLabel(html) });
-  }
-  if (ruleIds.includes('ko-linked-img-empty-alt')) {
-    out.push({
-      label: '숨김 텍스트를 두고 이미지는 alt=""',
-      code: withControlBlindText(html),
-    });
   }
   if (ruleIds.includes('video-caption')) {
     out.push({
@@ -386,7 +355,7 @@ export function suggestFixedHtmlAll(ruleIds: string[], html: string): string {
 const PRIMARY_FIX_LABEL: Record<string, string> = {
   'image-alt': 'alt에 이미지 설명 넣기',
   'ko-linked-img-empty-alt': '컨트롤 이미지에 비어 있지 않은 alt 넣기',
-  'ko-blank-link-title': 'title에 새창열림 안내 넣기',
+  'ko-blank-link-title': '이미지 alt는 링크 목적으로 두고, 숨김 텍스트로 새창열림 안내 넣기',
   'link-name': 'aria-label로 링크 목적 넣기',
   'button-name': 'aria-label로 버튼 이름 넣기',
   'html-has-lang': 'html에 lang="ko" 지정하기',
@@ -418,6 +387,11 @@ export function manualCheckTip(ruleIds: string[]): string | null {
   if (ruleIds.some((id) => id === 'wa-10-keyboard' || id === 'wa-11-focus')) {
     tips.push(
       '키보드(Tab / Shift+Tab / Enter·Space / Esc)로 해당 구간을 직접 조작·이동하며 순서와 초점 표시를 확인해 보세요.',
+    );
+  }
+  if (ruleIds.includes('ko-blank-link-title')) {
+    tips.push(
+      'title만으로 안내하지 마세요. aria-label은 링크 이름을 덮어쓰므로, 이미지 alt가 목적을 설명하면 숨김 텍스트(새창열림)만 추가하세요. .blind는 스크린리더가 읽도록 숨겨야 합니다.',
     );
   }
   if (ruleIds.includes('video-caption')) {
